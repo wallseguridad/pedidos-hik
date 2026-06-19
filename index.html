@@ -270,22 +270,20 @@ tbody tr:hover{background:#fafaf8;}
       <div id="dash-view-title" style="font-size:13px;font-weight:600;margin:1.5rem 0 0.75rem;color:#534ab7;"></div>
       <div id="dash-list"></div>
 
-      <!-- Resumen por origen -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:1.5rem;">
-        <div>
-          <div class="dep-header dep-china"><div><div class="dep-title dep-title-china">📦 Origen China</div><div class="dep-sub" id="d-china-sub">—</div></div></div>
-          <div class="tbl-wrap"><table>
-            <thead><tr><th>PO#</th><th>Proyecto</th><th>Ítems</th><th>Pend.</th><th>Desp.</th><th>Recib.</th></tr></thead>
-            <tbody id="dash-china-tbl"></tbody>
-          </table></div>
-        </div>
-        <div>
-          <div class="dep-header dep-uy"><div><div class="dep-title dep-title-uy">📦 Origen Uruguay</div><div class="dep-sub" id="d-uy-sub">—</div></div></div>
-          <div class="tbl-wrap"><table>
-            <thead><tr><th>PO#</th><th>Proyecto</th><th>Ítems</th><th>Pend.</th><th>Desp.</th><th>Recib.</th></tr></thead>
-            <tbody id="dash-uy-tbl"></tbody>
-          </table></div>
-        </div>
+      <!-- Resumen por origen (uno abajo del otro, a lo ancho) -->
+      <div style="margin-top:1.5rem;">
+        <div class="dep-header dep-china"><div><div class="dep-title dep-title-china">📦 Origen China</div><div class="dep-sub" id="d-china-sub">—</div></div></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th style="width:18%">PO#</th><th style="width:22%">Proyecto</th><th style="width:15%">Ítems</th><th style="width:15%">Pend.</th><th style="width:15%">Desp.</th><th style="width:15%">Recib.</th></tr></thead>
+          <tbody id="dash-china-tbl"></tbody>
+        </table></div>
+      </div>
+      <div style="margin-top:1.5rem;">
+        <div class="dep-header dep-uy"><div><div class="dep-title dep-title-uy">📦 Origen Uruguay</div><div class="dep-sub" id="d-uy-sub">—</div></div></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th style="width:18%">PO#</th><th style="width:22%">Proyecto</th><th style="width:15%">Ítems</th><th style="width:15%">Pend.</th><th style="width:15%">Desp.</th><th style="width:15%">Recib.</th></tr></thead>
+          <tbody id="dash-uy-tbl"></tbody>
+        </table></div>
       </div>
     </div>
 
