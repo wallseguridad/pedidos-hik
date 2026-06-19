@@ -269,6 +269,24 @@ tbody tr:hover{background:#fafaf8;}
       </div>
       <div id="dash-view-title" style="font-size:13px;font-weight:600;margin:1.5rem 0 0.75rem;color:#534ab7;"></div>
       <div id="dash-list"></div>
+
+      <!-- Resumen por origen -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:1.5rem;">
+        <div>
+          <div class="dep-header dep-china"><div><div class="dep-title dep-title-china">📦 Origen China</div><div class="dep-sub" id="d-china-sub">—</div></div></div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>PO#</th><th>Proyecto</th><th>Ítems</th><th>Pend.</th><th>Desp.</th><th>Recib.</th></tr></thead>
+            <tbody id="dash-china-tbl"></tbody>
+          </table></div>
+        </div>
+        <div>
+          <div class="dep-header dep-uy"><div><div class="dep-title dep-title-uy">📦 Origen Uruguay</div><div class="dep-sub" id="d-uy-sub">—</div></div></div>
+          <div class="tbl-wrap"><table>
+            <thead><tr><th>PO#</th><th>Proyecto</th><th>Ítems</th><th>Pend.</th><th>Desp.</th><th>Recib.</th></tr></thead>
+            <tbody id="dash-uy-tbl"></tbody>
+          </table></div>
+        </div>
+      </div>
     </div>
 
     <!-- BUSCAR -->
@@ -1082,6 +1100,33 @@ function renderDash(){
   document.getElementById('dc-sindesp').textContent=sinDesp;
   document.getElementById('dc-desp').textContent=desp;
   document.getElementById('dc-recib').textContent=recib;
+
+  // Tablas resumen por origen
+  function sumTbl(tbid,subid,dep){
+    const arr=allItems.filter(i=>i.deposito===dep);
+    const m={};arr.forEach(p=>{m[p.po]=m[p.po]||{its:[],proySet:new Set()};m[p.po].its.push(p);if(p.proyecto_nombre)m[p.po].proySet.add(p.proyecto_nombre);});
+    const activos=arr.filter(i=>i.estado!=='Recibido ARG').length;
+    document.getElementById(subid).textContent=arr.length+' ítems · '+Object.keys(m).length+' POs';
+    const tb=document.getElementById(tbid);if(!tb)return;tb.innerHTML='';
+    Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([po,{its,proySet}])=>{
+      const pend=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length;
+      const dd=its.filter(i=>i.estado==='Despachado').length;
+      const rr=its.filter(i=>i.estado==='Recibido ARG').length;
+      const ps=[...proySet].join(', ')||'<span style="color:#aaa">—</span>';
+      const al=its.some(i=>isAlerta(i));
+      tb.innerHTML+=`<tr style="${al?'background:rgba(252,235,235,.3)':''}">
+        <td style="font-size:11px;font-weight:500">${po}${al?' ⚠️':''}</td>
+        <td style="font-size:10px">${ps}</td>
+        <td>${its.length}</td>
+        <td style="color:${pend>0?'#ba7517':'#ccc'}">${pend||'—'}</td>
+        <td style="color:${dd>0?'#2d6da3':'#ccc'}">${dd||'—'}</td>
+        <td style="color:${rr>0?'#3b6d11':'#ccc'}">${rr||'—'}</td>
+      </tr>`;
+    });
+    if(!Object.keys(m).length) tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#aaa;padding:1rem">Sin pedidos</td></tr>';
+  }
+  sumTbl('dash-china-tbl','d-china-sub','China');
+  sumTbl('dash-uy-tbl','d-uy-sub','Uruguay');
 
   setDashView(dashView);
 }
