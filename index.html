@@ -370,11 +370,10 @@ tbody tr:hover{background:#fafaf8;}
     <div class="panel" id="panel-proyectos">
       <div class="toolbar">
         <div class="toolbar-left">
-          <select class="fsel" id="proy-sel" onchange="renderProyecto(this.value)" style="font-size:13px;padding:6px 12px;"><option value="">Seleccioná un proyecto</option></select>
+          <input class="search" id="proy-s" placeholder="Buscar proyecto..." oninput="renderProyectoTab()">
         </div>
         <div style="display:flex;gap:6px;">
-          <button class="btn-sm" onclick="exportProyecto()">📥 Exportar Excel</button>
-          <button class="btn-p" id="btn-new-proy" onclick="openModal('newProyModal')">+ Nuevo proyecto</button>
+          <button class="btn-p" id="btn-new-proy" onclick="openNuevoProyecto()">+ Nuevo proyecto</button>
         </div>
       </div>
       <div id="proy-body"></div>
@@ -1505,56 +1504,121 @@ function renderRecibidos(){
 
 // ─── PROYECTOS ───
 function renderProyectoTab(){
-  const all=allProyectos;
-  const sel=document.getElementById('proy-sel');const cur=sel?.value||'';
-  if(sel) sel.innerHTML='<option value="">Seleccioná un proyecto</option>'+all.map(p=>`<option value="${p.nombre}"${p.nombre===cur?' selected':''}>${p.nombre}</option>`).join('');
-  if(cur) renderProyecto(cur);
+  const s=(document.getElementById('proy-s')?.value||'').toLowerCase();
+  const body=document.getElementById('proy-body');
+  if(!body)return;
+  let proys=allProyectos.filter(p=>p.nombre.toLowerCase().includes(s));
+  // Ítems sin proyecto (stock libre) van al final como sección aparte
+  if(!proys.length && !allProyectos.length){
+    body.innerHTML='<div class="empty">No hay proyectos. Creá el primero con "+ Nuevo proyecto".</div>';
+    return;
+  }
+  if(!proys.length){body.innerHTML='<div class="empty">Ningún proyecto coincide con la búsqueda</div>';return;}
+
+  body.innerHTML=proys.map(proy=>{
+    const its=allItems.filter(i=>i.proyecto_nombre===proy.nombre);
+    const total=its.reduce((s,i)=>s+(i.amount||(i.qty||0)*(i.price||0)),0);
+    const pend=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length;
+    const desp=its.filter(i=>i.estado==='Despachado').length;
+    const recib=its.filter(i=>i.estado==='Recibido ARG').length;
+    const sinDespMonto=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').reduce((s,i)=>s+(i.amount||(i.qty||0)*(i.price||0)),0);
+    const uid='proy-'+proy.id.replace(/[^a-z0-9]/gi,'_');
+
+    const filas=its.length?its.map(p=>`<tr style="${isAlerta(p)?'background:rgba(252,235,235,.3)':''}">
+        <td style="font-size:11px;font-weight:500">${p.po}</td>
+        <td style="font-family:monospace;font-size:11px">${p.item_no}</td>
+        <td style="font-size:11px">${p.sap_code||'—'}</td>
+        <td style="font-size:11px" title="${p.material||''}">${(p.material||'').length>30?(p.material||'').slice(0,30)+'…':p.material||'—'}</td>
+        <td style="text-align:center">${p.qty||0}</td>
+        <td style="font-size:11px">$${fmtMoney(p.price)}</td>
+        <td style="font-size:11px">$${fmtMoney(p.amount||(p.qty||0)*(p.price||0))}</td>
+        <td><span class="${p.deposito==='China'?'o-china':'o-uy'}" style="font-size:10px">${p.deposito}</span></td>
+        <td>${despachoPill(p.estado)}</td>
+        <td><div style="display:flex;gap:3px;flex-wrap:wrap">${accionBtn(p)}${canWrite()?`<button class="btn-sm" onclick="openEditItem('${p.id}')" title="Editar">✏️</button>`:''}</div></td>
+      </tr>`).join('') : '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:1rem">Sin ítems asignados todavía</td></tr>';
+
+    return `<div class="po-block" style="margin-bottom:14px;">
+      <div class="po-header" style="background:#f4f3fb;border-left:3px solid #534ab7;">
+        <span class="po-label" onclick="togglePO('${uid}')" style="cursor:pointer;font-size:14px">
+          ▾ 📁 ${proy.nombre}
+        </span>
+        <span class="po-meta">
+          <span>${its.length} ítems</span>
+          <span>Total: USD ${fmtMoney(total)}</span>
+          ${sinDespMonto>0.01?`<span style="color:#ba7517;font-weight:500">Sin despachar: USD ${fmtMoney(sinDespMonto)}</span>`:its.length?`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`:''}
+          ${canWrite()?`<button class="btn-sm" onclick="event.stopPropagation();editarProyecto('${proy.id}')" title="Editar nombre">✏️ Editar</button>`:''}
+          ${canWrite()?`<button class="btn-sm" onclick="event.stopPropagation();exportProyectoNombre('${proy.nombre.replace(/'/g,"\\'")}')" title="Exportar">📥</button>`:''}
+          ${canWrite()?`<button class="btn-sm danger" onclick="event.stopPropagation();eliminarProyecto('${proy.id}','${proy.nombre.replace(/'/g,"\\'")}')" title="Eliminar proyecto">🗑</button>`:''}
+        </span>
+      </div>
+      <div class="po-body" id="${uid}">
+        <div style="display:flex;gap:18px;padding:8px 14px;font-size:11px;background:#fafaf8;border-bottom:0.5px solid #e5e5e5;">
+          ${pend?`<span style="color:#ba7517">⏳ ${pend} sin despachar</span>`:''}
+          ${desp?`<span style="color:#2d6da3">🚚 ${desp} despachado${desp>1?'s':''}</span>`:''}
+          ${recib?`<span style="color:#3b6d11">✅ ${recib} recibido${recib>1?'s':''} en ARG</span>`:''}
+        </div>
+        <table style="font-size:11px;table-layout:fixed;width:100%;min-width:900px;">
+          <thead><tr>
+            <th style="width:10%">PO#</th><th style="width:5%">Item</th><th style="width:9%">SAP</th>
+            <th style="width:24%">Material</th><th style="width:5%">QTY</th><th style="width:8%">P/Unit</th>
+            <th style="width:9%">Amount</th><th style="width:7%">Origen</th><th style="width:9%">Despacho</th><th style="width:11%">Acción</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
 }
 
-function renderProyecto(proy){
-  const body=document.getElementById('proy-body');
-  if(!proy){body.innerHTML='';return;}
-  const all=allItems.filter(i=>i.proyecto_nombre===proy);
-  const activos=all.filter(i=>i.estado!=='Recibido ARG');
-  const recibidos=all.filter(i=>i.estado==='Recibido ARG');
-  if(!all.length){body.innerHTML='<div class="empty">Sin ítems asignados a este proyecto</div>';return;}
-  const total=all.reduce((s,i)=>s+(i.qty||0)*(i.price||0),0);
-  body.innerHTML=`<div class="stats-row">
-    <div class="stat"><div class="stat-l">Total USD</div><div class="stat-v" style="font-size:16px">$${fmtMoney(total)}</div></div>
-    <div class="stat warn"><div class="stat-l">Pendientes</div><div class="stat-v">${activos.filter(i=>i.estado==='Pendiente').length}</div></div>
-    <div class="stat blue"><div class="stat-l">En tránsito</div><div class="stat-v">${activos.filter(i=>i.estado==='En tránsito').length}</div></div>
-    <div class="stat ok"><div class="stat-l">Despachados</div><div class="stat-v">${activos.filter(i=>i.estado==='Despachado').length}</div></div>
-    <div class="stat purple"><div class="stat-l">Recibidos ARG</div><div class="stat-v">${recibidos.length}</div></div>
-  </div>`;
-  ['China','Uruguay'].forEach(dep=>{
-    const its=activos.filter(i=>i.deposito===dep);if(!its.length)return;
-    body.innerHTML+=`<div style="font-size:12px;font-weight:600;color:#666;margin:12px 0 6px"><span class="${dep==='China'?'o-china':'o-uy'}">${dep}</span> — activos</div>
-    <div class="tbl-wrap" style="margin-bottom:10px;"><table>
-      <thead><tr><th>PO#</th><th>Item</th><th>SAP</th><th style="width:28%">Material</th><th>QTY</th><th>Estado</th><th>Fecha est.</th><th>Acción</th></tr></thead>
-      <tbody>${its.map(p=>`<tr>
-        <td style="font-size:11px">${p.po}</td><td style="font-family:monospace;font-size:11px">${p.item_no}</td>
-        <td style="font-size:11px">${p.sap_code||'—'}</td>
-        <td style="font-size:11px" title="${p.material||''}">${(p.material||'').length>28?(p.material||'').slice(0,28)+'…':p.material||'—'}</td>
-        <td>${p.qty||0}</td><td>${estPill(p)}</td>
-        <td style="font-size:11px">${p.fecha_estimada||'—'}</td><td>${accionBtn(p)}</td>
-      </tr>`).join('')}</tbody>
-    </table></div>`;
-  });
-  if(recibidos.length){
-    body.innerHTML+=`<div style="font-size:12px;font-weight:600;color:#0f6e56;margin:12px 0 6px">✅ Recibidos en Argentina</div>
-    <div class="tbl-wrap"><table>
-      <thead><tr><th>PO#</th><th>Material</th><th>QTY</th><th>Dep.</th><th>Recibido</th><th>Destino</th><th>Bulto</th></tr></thead>
-      <tbody>${recibidos.map(p=>`<tr>
-        <td style="font-size:11px">${p.po}</td>
-        <td style="font-size:11px" title="${p.material||''}">${(p.material||'').length>28?(p.material||'').slice(0,28)+'…':p.material||'—'}</td>
-        <td>${p.qty||0}</td>
-        <td><span class="${p.deposito==='China'?'o-china':'o-uy'}">${p.deposito}</span></td>
-        <td style="font-size:11px">${p.fecha_recepcion||'—'}</td>
-        <td style="font-size:11px">${p.lugar_recepcion||'—'}</td>
-        <td style="font-size:10px;font-weight:500;color:${p.estado_bulto==='OK'?'#3b6d11':p.estado_bulto==='Faltante'?'#a32d2d':'#854f0b'}">${p.estado_bulto||'—'}</td>
-      </tr>`).join('')}</tbody>
-    </table></div>`;
-  }
+function openNuevoProyecto(){
+  const nombre=prompt('Nombre del nuevo proyecto:');
+  if(!nombre||!nombre.trim())return;
+  guardarNuevoProyecto(nombre.trim());
+}
+
+async function guardarNuevoProyecto(nombre){
+  const existe=allProyectos.find(p=>p.nombre.toLowerCase()===nombre.toLowerCase());
+  if(existe){showToast('Ya existe un proyecto con ese nombre','error');return;}
+  const {error}=await sb.from('proyectos').insert({nombre,activo:true});
+  if(error){showToast(error.message,'error');return;}
+  showToast('✓ Proyecto creado','success');
+}
+
+async function editarProyecto(id){
+  const proy=allProyectos.find(p=>p.id===id);if(!proy)return;
+  const nuevoNombre=prompt('Nuevo nombre del proyecto:',proy.nombre);
+  if(!nuevoNombre||!nuevoNombre.trim()||nuevoNombre.trim()===proy.nombre)return;
+  const nombre=nuevoNombre.trim();
+  const existe=allProyectos.find(p=>p.id!==id&&p.nombre.toLowerCase()===nombre.toLowerCase());
+  if(existe){showToast('Ya existe otro proyecto con ese nombre','error');return;}
+  // Actualizar el proyecto y todos los ítems que lo referencian por nombre
+  const {error}=await sb.from('proyectos').update({nombre}).eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  await sb.from('items').update({proyecto_nombre:nombre}).eq('proyecto_id',id);
+  showToast('✓ Proyecto renombrado','success');
+  await loadItems();
+  renderAll();
+}
+
+async function eliminarProyecto(id,nombre){
+  const its=allItems.filter(i=>i.proyecto_id===id);
+  const msg=its.length
+    ? `El proyecto "${nombre}" tiene ${its.length} ítems asignados. Si lo eliminás, esos ítems quedan como "stock libre" (no se borran). ¿Continuar?`
+    : `¿Eliminar el proyecto "${nombre}"?`;
+  if(!confirm(msg))return;
+  // Liberar ítems
+  if(its.length) await sb.from('items').update({proyecto_id:null,proyecto_nombre:null}).eq('proyecto_id',id);
+  const {error}=await sb.from('proyectos').delete().eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  showToast('Proyecto eliminado','');
+  await loadItems();
+  renderAll();
+}
+
+function exportProyectoNombre(nombre){
+  const rows=allItems.filter(i=>i.proyecto_nombre===nombre).map(p=>p.estado==='Recibido ARG'?recibToRow(p):itemToRow(p));
+  if(!rows.length){showToast('Este proyecto no tiene ítems','error');return;}
+  descargarExcel(rows, nombre.slice(0,30), `proyecto_${nombre.toLowerCase().replace(/[^a-z0-9]/gi,'_')}`);
 }
 
 // ─── BUSCADOR GLOBAL ───
