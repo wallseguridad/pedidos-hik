@@ -57,6 +57,14 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 
 /* STATS */
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
+.dash-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.dash-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:18px 20px;cursor:pointer;transition:all .15s;}
+.dash-card:hover{border-color:#534ab7;box-shadow:0 4px 16px rgba(83,74,183,.08);}
+.dash-card.active{border-color:#534ab7;border-width:2px;background:#fafaff;}
+.dash-card-ico{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.dash-card-label{font-size:12px;color:#888;font-weight:500;}
+.dash-card-num{font-size:28px;font-weight:700;line-height:1.1;color:#1a1a1a;}
+.dash-card-sub{font-size:10px;color:#aaa;}
 .stat{background:#fff;border:0.5px solid #e5e5e5;border-radius:8px;padding:10px 14px;}
 .stat-l{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
 .stat-v{font-size:20px;font-weight:600;color:#1a1a1a;}
@@ -233,30 +241,34 @@ tbody tr:hover{background:#fafaf8;}
 
     <!-- DASHBOARD -->
     <div class="panel active" id="panel-dash">
-      <div class="stats-row">
-        <div class="stat danger"><div class="stat-l">Alertas</div><div class="stat-v" id="ds-alert">0</div></div>
-        <div class="stat warn"><div class="stat-l">Pendientes</div><div class="stat-v" id="ds-pend">0</div></div>
-        <div class="stat blue"><div class="stat-l">En tránsito</div><div class="stat-v" id="ds-trans">0</div></div>
-        <div class="stat ok"><div class="stat-l">Despachados</div><div class="stat-v" id="ds-desp">0</div></div>
-        <div class="stat purple"><div class="stat-l">Recibidos ARG</div><div class="stat-v" id="ds-recib">0</div></div>
-      </div>
-      <div id="dash-alerts"></div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-        <div>
-          <div class="dep-header dep-china"><div><div class="dep-title dep-title-china">📦 Origen China</div><div class="dep-sub" id="d-china-sub">—</div></div></div>
-          <div class="tbl-wrap"><table>
-            <thead><tr><th>PO#</th><th>Proyecto</th><th>Ítems</th><th>Pend.</th><th>Tráns.</th><th>Desp.</th></tr></thead>
-            <tbody id="dash-china-tbl"></tbody>
-          </table></div>
+      <div class="dash-cards">
+        <div class="dash-card" id="dcard-sindesp" onclick="setDashView('sindesp')">
+          <div class="dash-card-ico" style="background:#faeeda">📦</div>
+          <div class="dash-card-info">
+            <div class="dash-card-label">Sin despachar</div>
+            <div class="dash-card-num" id="dc-sindesp">0</div>
+            <div class="dash-card-sub" id="dc-sindesp-sub">pedidos con ítems pendientes</div>
+          </div>
         </div>
-        <div>
-          <div class="dep-header dep-uy"><div><div class="dep-title dep-title-uy">📦 Origen Uruguay</div><div class="dep-sub" id="d-uy-sub">—</div></div></div>
-          <div class="tbl-wrap"><table>
-            <thead><tr><th>PO#</th><th>Proyecto</th><th>Ítems</th><th>Pend.</th><th>Tráns.</th><th>Desp.</th></tr></thead>
-            <tbody id="dash-uy-tbl"></tbody>
-          </table></div>
+        <div class="dash-card" id="dcard-desp" onclick="setDashView('desp')">
+          <div class="dash-card-ico" style="background:#e6f1fb">🚚</div>
+          <div class="dash-card-info">
+            <div class="dash-card-label">Despachados</div>
+            <div class="dash-card-num" id="dc-desp">0</div>
+            <div class="dash-card-sub" id="dc-desp-sub">pedidos con algún despacho</div>
+          </div>
+        </div>
+        <div class="dash-card" id="dcard-recib" onclick="setDashView('recib')">
+          <div class="dash-card-ico" style="background:#eef0fb">✅</div>
+          <div class="dash-card-info">
+            <div class="dash-card-label">Recibidos en Argentina</div>
+            <div class="dash-card-num" id="dc-recib">0</div>
+            <div class="dash-card-sub" id="dc-recib-sub">pedidos con algo recibido</div>
+          </div>
         </div>
       </div>
+      <div id="dash-view-title" style="font-size:13px;font-weight:600;margin:1.5rem 0 0.75rem;color:#534ab7;"></div>
+      <div id="dash-list"></div>
     </div>
 
     <!-- BUSCAR -->
@@ -1049,28 +1061,101 @@ function updateCounts(){
 }
 
 // ─── DASHBOARD ───
+let dashView='sindesp';
+
 function renderDash(){
-  const activos=allItems.filter(i=>i.estado!=='Recibido ARG');
-  document.getElementById('ds-alert').textContent=activos.filter(i=>isAlerta(i)).length;
-  document.getElementById('ds-pend').textContent=activos.filter(i=>i.estado==='Pendiente').length;
-  document.getElementById('ds-trans').textContent=activos.filter(i=>i.estado==='En tránsito').length;
-  document.getElementById('ds-desp').textContent=activos.filter(i=>i.estado==='Despachado').length;
-  document.getElementById('ds-recib').textContent=allItems.filter(i=>i.estado==='Recibido ARG').length;
-  const ac=document.getElementById('dash-alerts');ac.innerHTML='';
-  activos.filter(i=>isAlerta(i)).forEach(p=>{ac.innerHTML+=`<div class="alert-strip">⚠️ <b>${p.po}-${p.item_no}</b> — ${p.material} — fecha vencida (${p.fecha_estimada})</div>`;});
-  function sumTbl(tbid,subid,dep){
-    const arr=allItems.filter(i=>i.deposito===dep&&i.estado!=='Recibido ARG');
-    const m={};arr.forEach(p=>{m[p.po]=m[p.po]||{its:[],proySet:new Set()};m[p.po].its.push(p);if(p.proyecto_nombre)m[p.po].proySet.add(p.proyecto_nombre);});
-    document.getElementById(subid).textContent=arr.length+' ítems · '+Object.keys(m).length+' POs';
-    const tb=document.getElementById(tbid);tb.innerHTML='';
-    Object.entries(m).forEach(([po,{its,proySet}])=>{
-      const pn=its.filter(i=>i.estado==='Pendiente').length,tt=its.filter(i=>i.estado==='En tránsito').length,dd=its.filter(i=>i.estado==='Despachado').length;
-      const ps=[...proySet].join(', ')||'<span style="color:#aaa">—</span>';
-      tb.innerHTML+=`<tr><td style="font-size:11px">${po}</td><td style="font-size:10px">${ps}</td><td>${its.length}</td><td>${pn||'—'}</td><td>${tt||'—'}</td><td>${dd||'—'}</td></tr>`;
-    });
+  // Agrupar TODOS los ítems por PO (sin importar origen)
+  const byPO={};
+  allItems.forEach(i=>{byPO[i.po]=byPO[i.po]||[];byPO[i.po].push(i);});
+
+  // Clasificar cada PO
+  let sinDesp=0, desp=0, recib=0;
+  Object.values(byPO).forEach(its=>{
+    const tieneSinDespachar=its.some(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG');
+    const tieneDespachado=its.some(i=>i.estado==='Despachado'||i.estado==='Recibido ARG');
+    const tieneRecibido=its.some(i=>i.estado==='Recibido ARG');
+    if(tieneSinDespachar) sinDesp++;
+    if(tieneDespachado) desp++;
+    if(tieneRecibido) recib++;
+  });
+
+  document.getElementById('dc-sindesp').textContent=sinDesp;
+  document.getElementById('dc-desp').textContent=desp;
+  document.getElementById('dc-recib').textContent=recib;
+
+  setDashView(dashView);
+}
+
+function setDashView(view){
+  dashView=view;
+  ['sindesp','desp','recib'].forEach(v=>{
+    document.getElementById('dcard-'+v).classList.toggle('active',v===view);
+  });
+
+  const byPO={};
+  allItems.forEach(i=>{byPO[i.po]=byPO[i.po]||[];byPO[i.po].push(i);});
+
+  let pos=Object.entries(byPO);
+  let titulo='';
+  if(view==='sindesp'){
+    pos=pos.filter(([po,its])=>its.some(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG'));
+    titulo='📦 Pedidos con ítems sin despachar';
+  } else if(view==='desp'){
+    pos=pos.filter(([po,its])=>its.some(i=>i.estado==='Despachado'||i.estado==='Recibido ARG'));
+    titulo='🚚 Pedidos con algún despacho';
+  } else {
+    pos=pos.filter(([po,its])=>its.some(i=>i.estado==='Recibido ARG'));
+    titulo='✅ Pedidos con mercadería recibida en Argentina';
   }
-  sumTbl('dash-china-tbl','d-china-sub','China');
-  sumTbl('dash-uy-tbl','d-uy-sub','Uruguay');
+
+  document.getElementById('dash-view-title').textContent=titulo+` (${pos.length})`;
+
+  const cont=document.getElementById('dash-list');
+  if(!pos.length){cont.innerHTML='<div class="empty">Sin pedidos en esta categoría</div>';return;}
+
+  // Ordenar por PO
+  pos.sort((a,b)=>a[0].localeCompare(b[0]));
+
+  cont.innerHTML=pos.map(([po,its])=>{
+    const dep=its[0].deposito;
+    const total=its.reduce((s,i)=>s+(i.amount||(i.qty||0)*(i.price||0)),0);
+    const pend=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG');
+    const desp=its.filter(i=>i.estado==='Despachado');
+    const recib=its.filter(i=>i.estado==='Recibido ARG');
+    const sinDespMonto=pend.reduce((s,i)=>s+(i.amount||(i.qty||0)*(i.price||0)),0);
+    const proySet=[...new Set(its.map(i=>i.proyecto_nombre).filter(Boolean))];
+    const al=its.filter(i=>isAlerta(i)).length;
+    const origenTag=dep==='China'?'<span style="font-size:10px;background:#fff0f0;color:#b5483f;padding:1px 7px;border-radius:20px">🇨🇳 China</span>':'<span style="font-size:10px;background:#eef7ff;color:#2d6da3;padding:1px 7px;border-radius:20px">🇺🇾 Uruguay</span>';
+    const pb=proySet.map(p=>`<span class="proy-tag proy-on" style="font-size:10px">📁 ${p}</span>`).join(' ');
+
+    // Barra de progreso
+    const totalItems=its.length;
+    const pctRecib=Math.round(recib.length/totalItems*100);
+    const pctDesp=Math.round(desp.length/totalItems*100);
+
+    return `<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:14px 18px;margin-bottom:10px;">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-weight:600;font-size:14px">${po}</span>
+          ${origenTag} ${pb}
+          ${al>0?`<span class="pill p-alert">${al} alerta${al>1?'s':''}</span>`:''}
+        </div>
+        <div style="text-align:right">
+          <div style="font-size:13px;font-weight:600">USD ${fmtMoney(total)}</div>
+          <div style="font-size:10px;color:#888">${totalItems} ítems</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:18px;margin-top:10px;font-size:11px;flex-wrap:wrap">
+        ${pend.length?`<span style="color:#ba7517">⏳ ${pend.length} sin despachar · USD ${fmtMoney(sinDespMonto)}</span>`:''}
+        ${desp.length?`<span style="color:#2d6da3">🚚 ${desp.length} despachado${desp.length>1?'s':''}</span>`:''}
+        ${recib.length?`<span style="color:#3b6d11">✅ ${recib.length} recibido${recib.length>1?'s':''} en ARG</span>`:''}
+      </div>
+      <div style="display:flex;height:6px;border-radius:4px;overflow:hidden;margin-top:10px;background:#f0f0ee">
+        <div style="width:${pctRecib}%;background:#3b6d11"></div>
+        <div style="width:${pctDesp}%;background:#3a7bd5"></div>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 // ─── DEPÓSITO ───
@@ -1196,9 +1281,7 @@ function toggleItemSel(id,el){
 function toggleAllItemsPO(el,ids){
   if(el.checked) ids.forEach(id=>itemSeleccion.add(id));
   else ids.forEach(id=>itemSeleccion.delete(id));
-  // refrescar checkboxes visibles
-  document.querySelectorAll('.item-check').forEach(cb=>{});
-  renderDep('China'); renderDep('Uruguay');
+  renderAll();
 }
 function updateBulkBar(){
   let bar=document.getElementById('bulk-bar');
@@ -1213,13 +1296,15 @@ function updateBulkBar(){
   // Calcular cuántos son despachables (no despachados)
   const sel=[...itemSeleccion].map(id=>allItems.find(i=>i.id===id)).filter(Boolean);
   const despachables=sel.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length;
+  const recibibles=sel.filter(i=>i.estado==='Despachado').length;
   bar.style.display='flex';
-  bar.innerHTML=`
-    <span style="font-weight:600">${n} seleccionado${n>1?'s':''}</span>
-    <button onclick="bulkDespachar()" style="background:#3a7bd5;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">🚚 Despachar (${despachables})</button>
-    <button onclick="bulkAsignarProyecto()" style="background:#534ab7;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">📁 Asignar proyecto</button>
-    <button onclick="bulkEliminar()" style="background:#a32d2d;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">🗑 Eliminar</button>
-    <button onclick="itemSeleccion.clear();renderDep('China');renderDep('Uruguay');" style="background:transparent;color:#aaa;border:none;cursor:pointer;font-size:18px;line-height:1">✕</button>`;
+  let botones=`<span style="font-weight:600">${n} seleccionado${n>1?'s':''}</span>`;
+  if(despachables>0) botones+=`<button onclick="bulkDespachar()" style="background:#3a7bd5;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">🚚 Despachar (${despachables})</button>`;
+  if(recibibles>0) botones+=`<button onclick="bulkRecibir()" style="background:#0f6e56;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">📍 Recibir ARG (${recibibles})</button>`;
+  botones+=`<button onclick="bulkAsignarProyecto()" style="background:#534ab7;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">📁 Proyecto</button>`;
+  botones+=`<button onclick="bulkEliminar()" style="background:#a32d2d;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">🗑 Eliminar</button>`;
+  botones+=`<button onclick="itemSeleccion.clear();renderAll();" style="background:transparent;color:#aaa;border:none;cursor:pointer;font-size:18px;line-height:1">✕</button>`;
+  bar.innerHTML=botones;
 }
 
 async function bulkDespachar(){
@@ -1298,10 +1383,12 @@ function renderDesp(){
       </div>
       <div class="po-body" id="${uid}">
         <table style="table-layout:fixed;width:100%;min-width:950px;"><thead><tr>
-          <th style="width:7%">Item</th><th style="width:10%">SAP</th><th style="width:24%">Material</th><th style="width:5%">QTY</th>
+          <th style="width:3%"><input type="checkbox" onchange="toggleAllItemsPO(this,${JSON.stringify(its.map(x=>x.id)).replace(/"/g,'&quot;')})"></th>
+          <th style="width:7%">Item</th><th style="width:9%">SAP</th><th style="width:22%">Material</th><th style="width:5%">QTY</th>
           <th style="width:12%">Proyecto</th><th style="width:10%">Courier</th><th style="width:12%">Tracking</th><th style="width:8%">Despacho</th><th style="width:6%">Guía</th><th style="width:6%">Acción</th>
         </tr></thead>
         <tbody>${its.map(p=>`<tr>
+          <td><input type="checkbox" class="item-check" ${itemSeleccion.has(p.id)?'checked':''} onchange="toggleItemSel('${p.id}',this)"></td>
           <td style="font-family:monospace;font-size:11px">${p.item_no}</td>
           <td style="font-size:11px">${p.sap_code||'—'}</td>
           <td style="font-size:11px" title="${p.material||''}">${(p.material||'').length>22?(p.material||'').slice(0,22)+'…':p.material||'—'}</td>
@@ -1315,6 +1402,7 @@ function renderDesp(){
       </div>`;
     body.appendChild(block);
   });
+  updateBulkBar();
 }
 
 // ─── RECIBIDOS ───
@@ -1699,9 +1787,36 @@ function openRecib(id){
   openModal('recibModal');
 }
 
+let bulkRecibIds=[];
+function bulkRecibir(){
+  const sel=[...itemSeleccion].map(id=>allItems.find(i=>i.id===id)).filter(Boolean)
+    .filter(i=>i.estado==='Despachado');
+  if(!sel.length){showToast('Seleccioná ítems que estén despachados para recibirlos','error');return;}
+  bulkRecibIds=sel.map(i=>i.id);
+  document.getElementById('rm-id').value='__bulk__';
+  document.getElementById('rm-info').textContent=`Recepción masiva — ${sel.length} ítems de ${[...new Set(sel.map(i=>i.po))].length} PO(s)`;
+  document.getElementById('rm-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('rm-quien').value=currentUser?.nombre||'';
+  document.getElementById('rm-lugar').value='';
+  document.getElementById('rm-bulto').value='OK';
+  document.getElementById('rm-notas').value='';
+  openModal('recibModal');
+}
+
 async function saveRecepcion(){
   const id=document.getElementById('rm-id').value;
   const obj={estado:'Recibido ARG',fecha_recepcion:document.getElementById('rm-fecha').value||null,quien_recibio:document.getElementById('rm-quien').value,lugar_recepcion:document.getElementById('rm-lugar').value,estado_bulto:document.getElementById('rm-bulto').value,notas_recepcion:document.getElementById('rm-notas').value};
+  if(id==='__bulk__'){
+    if(!bulkRecibIds.length){closeModal('recibModal');return;}
+    const {error}=await sb.from('items').update(obj).in('id',bulkRecibIds);
+    if(error){showToast(error.message,'error');return;}
+    const n=bulkRecibIds.length;
+    bulkRecibIds=[]; itemSeleccion.clear();
+    closeModal('recibModal');
+    showToast(`✅ ${n} ítems recibidos en Argentina`,'success');
+    await loadItems(); renderAll();
+    return;
+  }
   const {error}=await sb.from('items').update(obj).eq('id',id);
   if(error){showToast(error.message,'error');return;}
   closeModal('recibModal');
@@ -2938,4 +3053,3 @@ function showToast(msg,type=''){
 </script>
 </body>
 </html>
-
