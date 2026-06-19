@@ -1210,11 +1210,13 @@ function stockPill(estado_stock){
   return `<span class="pill p-pend"><span class="dot"></span>${estado_stock}</span>`;
 }
 
-function despachoPill(estado_despacho){
-  if(!estado_despacho) return '<span style="font-size:10px;color:#aaa">—</span>';
-  const e=estado_despacho.toLowerCase();
-  if(e==='despachado'||e==='en camino por aéreo'||e==='en camino') return `<span class="pill p-desp"><span class="dot"></span>${estado_despacho}</span>`;
-  return `<span class="pill p-trans"><span class="dot"></span>${estado_despacho}</span>`;
+function despachoPill(estado){
+  if(!estado) return '<span style="font-size:10px;color:#aaa">—</span>';
+  const e=estado.toLowerCase();
+  if(e==='despachado') return `<span class="pill p-desp"><span class="dot"></span>Despachado</span>`;
+  if(e==='recibido arg') return `<span class="pill p-desp"><span class="dot"></span>Recibido ARG</span>`;
+  if(e==='en tránsito'||e==='en transito') return `<span class="pill p-trans"><span class="dot"></span>En tránsito</span>`;
+  return `<span class="pill p-pend"><span class="dot"></span>${estado}</span>`;
 }
 
 function renderDep(dep){
@@ -1305,7 +1307,7 @@ function renderDep(dep){
           <td>${p.fecha_estimada||'—'}</td>
           <td>${stockPill(p.estado_stock)}</td>
           <td>${p.shipment_method_proveedor||'—'}</td>
-          <td>${despachoPill(p.estado_despacho)}</td>
+          <td>${despachoPill(p.estado)}</td>
           <td>${p.guia_pdf_nombre?`<span class="pdf-badge">📄 ${p.guia_num||'PDF'}</span>`:'<span style="color:#aaa">—</span>'}</td>
           <td>${proyTag(p)}</td>
           <td><div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">${accionBtn(p)}${canWrite()?`<button class="btn-sm" onclick="openEditItem('${p.id}')" title="Editar">✏️</button>`:''}</div></td>
