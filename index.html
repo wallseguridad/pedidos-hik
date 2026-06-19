@@ -58,9 +58,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 /* STATS */
 .stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
 .dash-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
-.dash-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:18px 20px;cursor:pointer;transition:all .15s;}
-.dash-card:hover{border-color:#534ab7;box-shadow:0 4px 16px rgba(83,74,183,.08);}
-.dash-card.active{border-color:#534ab7;border-width:2px;background:#fafaff;}
+.dash-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:18px 20px;}
 .dash-card-ico{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
 .dash-card-label{font-size:12px;color:#888;font-weight:500;}
 .dash-card-num{font-size:28px;font-weight:700;line-height:1.1;color:#1a1a1a;}
@@ -242,7 +240,7 @@ tbody tr:hover{background:#fafaf8;}
     <!-- DASHBOARD -->
     <div class="panel active" id="panel-dash">
       <div class="dash-cards">
-        <div class="dash-card" id="dcard-sindesp" onclick="setDashView('sindesp')">
+        <div class="dash-card" id="dcard-sindesp">
           <div class="dash-card-ico" style="background:#faeeda">📦</div>
           <div class="dash-card-info">
             <div class="dash-card-label">Sin despachar</div>
@@ -250,7 +248,7 @@ tbody tr:hover{background:#fafaf8;}
             <div class="dash-card-sub" id="dc-sindesp-sub">pedidos con ítems pendientes</div>
           </div>
         </div>
-        <div class="dash-card" id="dcard-desp" onclick="setDashView('desp')">
+        <div class="dash-card" id="dcard-desp">
           <div class="dash-card-ico" style="background:#e6f1fb">🚚</div>
           <div class="dash-card-info">
             <div class="dash-card-label">Despachados</div>
@@ -258,7 +256,7 @@ tbody tr:hover{background:#fafaf8;}
             <div class="dash-card-sub" id="dc-desp-sub">pedidos con algún despacho</div>
           </div>
         </div>
-        <div class="dash-card" id="dcard-recib" onclick="setDashView('recib')">
+        <div class="dash-card" id="dcard-recib">
           <div class="dash-card-ico" style="background:#eef0fb">✅</div>
           <div class="dash-card-info">
             <div class="dash-card-label">Recibidos en Argentina</div>
@@ -267,8 +265,6 @@ tbody tr:hover{background:#fafaf8;}
           </div>
         </div>
       </div>
-      <div id="dash-view-title" style="font-size:13px;font-weight:600;margin:1.5rem 0 0.75rem;color:#534ab7;"></div>
-      <div id="dash-list"></div>
 
       <!-- Resumen por origen (uno abajo del otro, a lo ancho) -->
       <div style="margin-top:1.5rem;">
@@ -1140,62 +1136,6 @@ function setDashView(view){
   ['sindesp','desp','recib'].forEach(v=>{
     document.getElementById('dcard-'+v).classList.toggle('active',v===view);
   });
-
-  const byPO={};
-  allItems.forEach(i=>{byPO[i.po]=byPO[i.po]||[];byPO[i.po].push(i);});
-
-  let pos=Object.entries(byPO);
-  if(view==='sindesp'){
-    pos=pos.filter(([po,its])=>its.some(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG'));
-  } else if(view==='desp'){
-    pos=pos.filter(([po,its])=>its.some(i=>i.estado==='Despachado'||i.estado==='Recibido ARG'));
-  } else {
-    pos=pos.filter(([po,its])=>its.some(i=>i.estado==='Recibido ARG'));
-  }
-
-  const cont=document.getElementById('dash-list');
-  if(!pos.length){cont.innerHTML='<div class="empty">Sin pedidos en esta categoría</div>';return;}
-
-  pos.sort((a,b)=>a[0].localeCompare(b[0]));
-
-  cont.innerHTML=pos.map(([po,its])=>{
-    const dep=its[0].deposito;
-    const total=its.reduce((s,i)=>s+(i.amount||(i.qty||0)*(i.price||0)),0);
-    const pend=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG');
-    const desp=its.filter(i=>i.estado==='Despachado');
-    const recib=its.filter(i=>i.estado==='Recibido ARG');
-    const sinDespMonto=pend.reduce((s,i)=>s+(i.amount||(i.qty||0)*(i.price||0)),0);
-    const proySet=[...new Set(its.map(i=>i.proyecto_nombre).filter(Boolean))];
-    const al=its.filter(i=>isAlerta(i)).length;
-    const origenTag=dep==='China'?'<span style="font-size:10px;background:#fff0f0;color:#b5483f;padding:1px 7px;border-radius:20px">🇨🇳 China</span>':'<span style="font-size:10px;background:#eef7ff;color:#2d6da3;padding:1px 7px;border-radius:20px">🇺🇾 Uruguay</span>';
-    const pb=proySet.map(p=>`<span class="proy-tag proy-on" style="font-size:10px">📁 ${p}</span>`).join(' ');
-    const totalItems=its.length;
-    const pctRecib=Math.round(recib.length/totalItems*100);
-    const pctDesp=Math.round(desp.length/totalItems*100);
-
-    return `<div style="background:#fff;border:1px solid #e5e5e5;border-radius:12px;padding:14px 18px;margin-bottom:10px;">
-      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px;">
-        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-          <span style="font-weight:600;font-size:14px">${po}</span>
-          ${origenTag} ${pb}
-          ${al>0?`<span class="pill p-alert">${al} alerta${al>1?'s':''}</span>`:''}
-        </div>
-        <div style="text-align:right">
-          <div style="font-size:13px;font-weight:600">USD ${fmtMoney(total)}</div>
-          <div style="font-size:10px;color:#888">${totalItems} ítems</div>
-        </div>
-      </div>
-      <div style="display:flex;gap:18px;margin-top:10px;font-size:11px;flex-wrap:wrap">
-        ${pend.length?`<span style="color:#ba7517">⏳ ${pend.length} sin despachar · USD ${fmtMoney(sinDespMonto)}</span>`:''}
-        ${desp.length?`<span style="color:#2d6da3">🚚 ${desp.length} despachado${desp.length>1?'s':''}</span>`:''}
-        ${recib.length?`<span style="color:#3b6d11">✅ ${recib.length} recibido${recib.length>1?'s':''} en ARG</span>`:''}
-      </div>
-      <div style="display:flex;height:6px;border-radius:4px;overflow:hidden;margin-top:10px;background:#f0f0ee">
-        <div style="width:${pctRecib}%;background:#3b6d11"></div>
-        <div style="width:${pctDesp}%;background:#3a7bd5"></div>
-      </div>
-    </div>`;
-  }).join('');
 }
 
 // ─── DEPÓSITO ───
