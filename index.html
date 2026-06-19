@@ -441,6 +441,10 @@ tbody tr:hover{background:#fafaf8;}
             <button class="btn-sm" onclick="addCourierInline()">+ Agregar</button>
           </div>
           <div id="admin-couriers-preview"></div>
+          <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid #e5e5e5;">
+            <button class="btn-sm" onclick="limpiarDatosViejos()" style="width:100%;border-color:#ba7517;color:#854f0b">🔧 Reparar estados mal cargados</button>
+            <div style="font-size:10px;color:#999;margin-top:4px;">Corrige ítems con "Despachado/Pendiente" guardado en el campo equivocado por imports viejos.</div>
+          </div>
         </div>
 
         <!-- ESTADOS STOCK -->
@@ -1037,8 +1041,9 @@ function pdfBadge(p){ return p.guia_pdf_nombre?`<span class="pdf-badge">📄 ${p
 function canWrite(){ return currentUser?.rol==='admin'||currentUser?.rol==='compras'; }
 
 function accionBtn(p){
-  if(p.estado==='Recibido ARG') return `<button class="btn-sm" onclick="verItem('${p.id}')" title="Ver">👁</button>`;
-  if(p.estado==='Despachado') return canWrite()
+  const e=(p.estado||'').toLowerCase().trim();
+  if(e==='recibido arg') return `<button class="btn-sm" onclick="verItem('${p.id}')" title="Ver">👁</button>`;
+  if(e==='despachado') return canWrite()
     ? `<div style="display:flex;gap:3px;flex-wrap:wrap"><button class="btn-sm green" onclick="openRecib('${p.id}')" title="Recibir en ARG">📍</button><button class="btn-sm" onclick="openDespacho('${p.id}')" title="Editar despacho / PDFs">🚚</button><button class="btn-sm" onclick="verItem('${p.id}')" title="Ver detalle">👁</button></div>`
     : `<button class="btn-sm" onclick="verItem('${p.id}')" title="Ver">👁</button>`;
   return canWrite()
@@ -1307,7 +1312,7 @@ function renderDep(dep){
           <td>${p.fecha_estimada||'—'}</td>
           <td>${stockPill(p.estado_stock)}</td>
           <td>${p.shipment_method_proveedor||'—'}</td>
-          <td>${despachoPill(p.estado)}</td>
+          <td title="estado real: '${p.estado||'(vacío)'}'">${despachoPill(p.estado)}</td>
           <td>${p.guia_pdf_nombre?`<span class="pdf-badge">📄 ${p.guia_num||'PDF'}</span>`:'<span style="color:#aaa">—</span>'}</td>
           <td>${proyTag(p)}</td>
           <td><div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">${accionBtn(p)}${canWrite()?`<button class="btn-sm" onclick="openEditItem('${p.id}')" title="Editar">✏️</button>`:''}</div></td>
@@ -2079,7 +2084,10 @@ async function doImport(){
     const currency=g(c,'currency')||'USD';
     const fecha_estimada=parseFecha(g(c,'fecha'));
     const estado_stock=g(c,'estado_stock');
-    const shipment_method_proveedor=g(c,'shipment');
+    let shipment_method_proveedor=g(c,'shipment');
+    // Si lo que cayó en shipment es en realidad un estado, no lo guardamos ahí
+    const estadosNoSonMetodo=['despachado','pendiente','en tránsito','en transito','recibido arg','en camino','in stock','in transit','ready'];
+    if(estadosNoSonMetodo.includes((shipment_method_proveedor||'').toLowerCase().trim())) shipment_method_proveedor='';
     const estado_despacho=g(c,'estado_despacho');
     const guia_num=g(c,'guia');
 
@@ -3054,6 +3062,31 @@ async function eliminarDeudasSeleccionadas(){
   showToast(`✓ ${ids.length} factura${ids.length>1?'s':''} eliminada${ids.length>1?'s':''}`,'');
   await loadDeudas();
   renderDeudas();
+}
+
+async function limpiarDatosViejos(){
+  // Valores que son ESTADOS (no métodos de envío) y que quedaron mal en shipment_method_proveedor
+  const estadosConocidos=['despachado','pendiente','en tránsito','en transito','recibido arg','en camino'];
+  const aReparar=allItems.filter(i=>{
+    const sm=(i.shipment_method_proveedor||'').toLowerCase().trim();
+    return estadosConocidos.includes(sm);
+  });
+
+  if(!aReparar.length){
+    showToast('No hay ítems para reparar — todo está OK','success');
+    return;
+  }
+
+  if(!confirm(`Se encontraron ${aReparar.length} ítems con un estado guardado en el campo "Ship. Method".\n\nSe va a limpiar ese campo (queda vacío) para que dejen de mostrar "Despachado" donde no corresponde. El estado real del ítem NO se toca.\n\n¿Continuar?`)) return;
+
+  let ok=0;
+  for(const item of aReparar){
+    const {error}=await sb.from('items').update({shipment_method_proveedor:null}).eq('id',item.id);
+    if(!error) ok++;
+  }
+  showToast(`✓ ${ok} ítems reparados`,'success');
+  await loadItems();
+  renderAll();
 }
 
 function readCsv(input){
