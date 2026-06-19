@@ -1107,10 +1107,12 @@ function renderDash(){
   function sumTbl(tbid,subid,dep){
     const arr=allItems.filter(i=>i.deposito===dep);
     const m={};arr.forEach(p=>{m[p.po]=m[p.po]||{its:[],proySet:new Set()};m[p.po].its.push(p);if(p.proyecto_nombre)m[p.po].proySet.add(p.proyecto_nombre);});
-    const activos=arr.filter(i=>i.estado!=='Recibido ARG').length;
-    document.getElementById(subid).textContent=arr.length+' ítems · '+Object.keys(m).length+' POs';
+    // Ocultar los PO donde TODOS los ítems ya están recibidos en Argentina
+    const entradas=Object.entries(m).filter(([po,{its}])=>its.some(i=>i.estado!=='Recibido ARG'));
+    const itemsVisibles=entradas.reduce((s,[po,{its}])=>s+its.length,0);
+    document.getElementById(subid).textContent=itemsVisibles+' ítems · '+entradas.length+' POs activos';
     const tb=document.getElementById(tbid);if(!tb)return;tb.innerHTML='';
-    Object.entries(m).sort((a,b)=>a[0].localeCompare(b[0])).forEach(([po,{its,proySet}])=>{
+    entradas.sort((a,b)=>a[0].localeCompare(b[0])).forEach(([po,{its,proySet}])=>{
       const pend=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length;
       const dd=its.filter(i=>i.estado==='Despachado').length;
       const rr=its.filter(i=>i.estado==='Recibido ARG').length;
@@ -1125,7 +1127,7 @@ function renderDash(){
         <td style="color:${rr>0?'#3b6d11':'#ccc'}">${rr||'—'}</td>
       </tr>`;
     });
-    if(!Object.keys(m).length) tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#aaa;padding:1rem">Sin pedidos</td></tr>';
+    if(!entradas.length) tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#aaa;padding:1rem">Sin pedidos activos</td></tr>';
   }
   sumTbl('dash-china-tbl','d-china-sub','China');
   sumTbl('dash-uy-tbl','d-uy-sub','Uruguay');
@@ -1143,24 +1145,17 @@ function setDashView(view){
   allItems.forEach(i=>{byPO[i.po]=byPO[i.po]||[];byPO[i.po].push(i);});
 
   let pos=Object.entries(byPO);
-  let titulo='';
   if(view==='sindesp'){
     pos=pos.filter(([po,its])=>its.some(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG'));
-    titulo='📦 Pedidos con ítems sin despachar';
   } else if(view==='desp'){
     pos=pos.filter(([po,its])=>its.some(i=>i.estado==='Despachado'||i.estado==='Recibido ARG'));
-    titulo='🚚 Pedidos con algún despacho';
   } else {
     pos=pos.filter(([po,its])=>its.some(i=>i.estado==='Recibido ARG'));
-    titulo='✅ Pedidos con mercadería recibida en Argentina';
   }
-
-  document.getElementById('dash-view-title').textContent=titulo+` (${pos.length})`;
 
   const cont=document.getElementById('dash-list');
   if(!pos.length){cont.innerHTML='<div class="empty">Sin pedidos en esta categoría</div>';return;}
 
-  // Ordenar por PO
   pos.sort((a,b)=>a[0].localeCompare(b[0]));
 
   cont.innerHTML=pos.map(([po,its])=>{
@@ -1174,8 +1169,6 @@ function setDashView(view){
     const al=its.filter(i=>isAlerta(i)).length;
     const origenTag=dep==='China'?'<span style="font-size:10px;background:#fff0f0;color:#b5483f;padding:1px 7px;border-radius:20px">🇨🇳 China</span>':'<span style="font-size:10px;background:#eef7ff;color:#2d6da3;padding:1px 7px;border-radius:20px">🇺🇾 Uruguay</span>';
     const pb=proySet.map(p=>`<span class="proy-tag proy-on" style="font-size:10px">📁 ${p}</span>`).join(' ');
-
-    // Barra de progreso
     const totalItems=its.length;
     const pctRecib=Math.round(recib.length/totalItems*100);
     const pctDesp=Math.round(desp.length/totalItems*100);
