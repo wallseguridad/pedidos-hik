@@ -1,0 +1,3130 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedidos HIK</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f3;color:#1a1a1a;font-size:13px;}
+
+/* LOGIN */
+#login-screen{display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f5f5f3;}
+.login-box{background:#fff;border:0.5px solid #ddd;border-radius:12px;padding:2rem;width:360px;box-shadow:0 4px 24px rgba(0,0,0,.08);}
+.login-logo{display:flex;align-items:center;gap:10px;margin-bottom:1.5rem;}
+.login-logo-icon{width:36px;height:36px;background:#534ab7;border-radius:8px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px;}
+.login-title{font-size:16px;font-weight:600;}
+.login-sub{font-size:11px;color:#888;}
+.login-field{margin-bottom:12px;}
+.login-field label{font-size:11px;color:#666;display:block;margin-bottom:4px;}
+.login-field input{width:100%;padding:8px 10px;border:0.5px solid #ddd;border-radius:6px;font-size:13px;font-family:inherit;}
+.login-field input:focus{outline:none;border-color:#534ab7;}
+.login-btn{width:100%;background:#534ab7;color:#fff;border:none;padding:9px;border-radius:6px;font-size:13px;cursor:pointer;font-family:inherit;margin-top:4px;}
+.login-btn:hover{background:#3c3489;}
+.login-err{color:#a32d2d;font-size:11px;margin-top:8px;display:none;}
+
+/* APP */
+#app{display:none;}
+.topbar{background:#fff;border-bottom:0.5px solid #e5e5e5;padding:0 1.25rem;display:flex;align-items:center;justify-content:space-between;height:50px;position:sticky;top:0;z-index:100;}
+.brand{font-size:14px;font-weight:600;color:#1a1a1a;display:flex;align-items:center;gap:8px;}
+.brand-dot{width:8px;height:8px;border-radius:50%;background:#ccc;transition:background .3s;}
+.brand-dot.live{background:#22c55e;}
+.topbar-right{display:flex;align-items:center;gap:10px;}
+.user-badge{font-size:11px;color:#666;display:flex;align-items:center;gap:6px;}
+.role-pill{font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.role-admin{background:#eeedfe;color:#534ab7;}
+.role-compras{background:#e6f1fb;color:#185fa5;}
+.role-vendedor{background:#eaf3de;color:#3b6d11;}
+.logout-btn{font-size:11px;padding:4px 10px;border:0.5px solid #ddd;border-radius:6px;background:#fff;cursor:pointer;color:#666;}
+.logout-btn:hover{background:#f5f5f3;}
+
+.main-tabs{background:#fff;border-bottom:0.5px solid #e5e5e5;display:flex;padding:0 1.25rem;gap:2px;overflow-x:auto;}
+.main-tab{padding:10px 12px;font-size:12px;color:#666;cursor:pointer;border-bottom:2px solid transparent;display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.main-tab:hover{color:#1a1a1a;}
+.main-tab.active{color:#1a1a1a;border-bottom-color:#534ab7;font-weight:500;}
+.main-tab .cnt{font-size:10px;background:#f0f0ee;padding:1px 6px;border-radius:20px;color:#666;}
+.main-tab.active .cnt{background:#eeedfe;color:#534ab7;}
+.tab-recib.active{border-bottom-color:#0f6e56;}
+.tab-recib.active .cnt{background:#e1f5ee;color:#0f6e56;}
+.tab-admin.active{border-bottom-color:#993c1d;}
+.tab-admin.active .cnt{background:#faece7;color:#993c1d;}
+
+.content{padding:1rem 1.25rem;}
+.panel{display:none;}
+.panel.active{display:block;}
+
+/* STATS */
+.stats-row{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-bottom:1rem;}
+.dash-cards{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;}
+.dash-card{display:flex;align-items:center;gap:14px;background:#fff;border:1px solid #e5e5e5;border-radius:14px;padding:18px 20px;}
+.dash-card-ico{width:48px;height:48px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0;}
+.dash-card-label{font-size:12px;color:#888;font-weight:500;}
+.dash-card-num{font-size:28px;font-weight:700;line-height:1.1;color:#1a1a1a;}
+.dash-card-sub{font-size:10px;color:#aaa;}
+.stat{background:#fff;border:0.5px solid #e5e5e5;border-radius:8px;padding:10px 14px;}
+.stat-l{font-size:10px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;}
+.stat-v{font-size:20px;font-weight:600;color:#1a1a1a;}
+.stat.warn .stat-v{color:#ba7517;}
+.stat.ok .stat-v{color:#0f6e56;}
+.stat.danger .stat-v{color:#a32d2d;}
+.stat.blue .stat-v{color:#185fa5;}
+.stat.purple .stat-v{color:#534ab7;}
+
+/* TOOLBAR */
+.toolbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.toolbar-left{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.search{font-size:12px;padding:5px 10px;border:0.5px solid #e5e5e5;border-radius:6px;background:#fff;color:#1a1a1a;width:190px;}
+.fsel{font-size:12px;padding:5px 10px;border:0.5px solid #e5e5e5;border-radius:6px;background:#fff;color:#1a1a1a;cursor:pointer;}
+
+/* BUTTONS */
+.btn-p{background:#534ab7;color:#fff;border:none;font-size:12px;padding:6px 14px;border-radius:6px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;font-family:inherit;}
+.btn-p:hover{background:#3c3489;}
+.btn-p.china{background:#993c1d;} .btn-p.china:hover{background:#712b13;}
+.btn-p.green{background:#0f6e56;} .btn-p.green:hover{background:#085041;}
+.btn-sm{font-size:11px;padding:3px 9px;border:0.5px solid #ddd;border-radius:6px;background:#fff;color:#1a1a1a;cursor:pointer;display:inline-flex;align-items:center;gap:3px;font-family:inherit;}
+.btn-sm:hover{background:#f5f5f3;}
+.btn-sm.green{border-color:#0f6e56;color:#0f6e56;} .btn-sm.green:hover{background:#e1f5ee;}
+.btn-sm.danger{border-color:#a32d2d;color:#a32d2d;} .btn-sm.danger:hover{background:#fcebeb;}
+
+/* TABLES */
+.tbl-wrap{background:#fff;border:0.5px solid #e5e5e5;border-radius:10px;overflow:hidden;}
+table{width:100%;border-collapse:collapse;font-size:12px;}
+thead th{background:#fafaf8;padding:7px 10px;text-align:left;font-size:11px;font-weight:500;color:#666;border-bottom:0.5px solid #e5e5e5;white-space:nowrap;}
+tbody td{padding:8px 10px;border-bottom:0.5px solid #e5e5e5;color:#1a1a1a;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+tbody tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:#fafaf8;}
+
+/* PILLS */
+.pill{display:inline-flex;align-items:center;gap:3px;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.p-pend{background:#faeeda;color:#854f0b;}
+.p-trans{background:#e6f1fb;color:#185fa5;}
+.p-desp{background:#eaf3de;color:#3b6d11;}
+.p-alert{background:#fcebeb;color:#a32d2d;}
+.p-recib{background:#eeedfe;color:#3c3489;}
+.dot{width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;}
+.o-china{background:#faece7;color:#993c1d;font-size:10px;padding:1px 6px;border-radius:20px;font-weight:500;}
+.o-uy{background:#eeedfe;color:#534ab7;font-size:10px;padding:1px 6px;border-radius:20px;font-weight:500;}
+.proy-tag{display:inline-flex;align-items:center;gap:4px;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+.proy-on{background:#eeedfe;color:#534ab7;}
+.proy-off{background:#f0f0ee;color:#888;}
+.pdf-badge{display:inline-flex;align-items:center;gap:4px;background:#eaf3de;color:#3b6d11;font-size:10px;padding:2px 7px;border-radius:20px;font-weight:500;}
+
+/* PO BLOCKS */
+.po-block{margin-bottom:10px;}
+.po-header{background:#fafaf8;border:0.5px solid #e5e5e5;border-radius:8px 8px 0 0;padding:7px 12px;display:flex;justify-content:space-between;align-items:center;cursor:pointer;}
+.po-header:hover{background:#fff;}
+.po-label{font-size:12px;font-weight:500;color:#1a1a1a;display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.po-meta{font-size:11px;color:#666;display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+.po-body{border:0.5px solid #e5e5e5;border-top:none;border-radius:0 0 8px 8px;overflow-x:auto;}
+
+/* DEP HEADERS */
+.dep-header{display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding:10px 14px;border-radius:8px;border-left:3px solid;}
+.dep-china{background:#faece7;border-color:#993c1d;}
+.dep-uy{background:#eeedfe;border-color:#534ab7;}
+.dep-recib{background:#e1f5ee;border-color:#0f6e56;}
+.dep-title{font-size:14px;font-weight:600;}
+.dep-title-china{color:#712b13;}
+.dep-title-uy{color:#3c3489;}
+.dep-title-recib{color:#085041;}
+.dep-sub{font-size:11px;color:#666;}
+
+/* SEARCH */
+.gsearch-wrap{position:relative;margin-bottom:1rem;}
+.gsearch{width:100%;font-size:14px;padding:11px 16px 11px 40px;border:1.5px solid #ddd;border-radius:10px;background:#fff;color:#1a1a1a;font-family:inherit;}
+.gsearch:focus{outline:none;border-color:#534ab7;}
+.gsearch-ico{position:absolute;left:13px;top:50%;transform:translateY(-50%);font-size:16px;color:#aaa;}
+.result-card{background:#fff;border:0.5px solid #e5e5e5;border-radius:10px;margin-bottom:6px;padding:10px 14px;display:flex;align-items:flex-start;gap:12px;}
+.result-main{flex:1;min-width:0;}
+.result-meta{font-size:11px;color:#666;display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.result-right{display:flex;flex-direction:column;align-items:flex-end;gap:5px;flex-shrink:0;}
+.hl{background:#eeedfe;color:#534ab7;border-radius:2px;padding:0 2px;font-weight:500;}
+
+/* ALERTS */
+.alert-strip{background:#fcebeb;border:0.5px solid #f09595;border-radius:8px;padding:8px 12px;margin-bottom:8px;font-size:11px;color:#791f1f;display:flex;align-items:center;gap:7px;}
+
+/* MODALS */
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;align-items:center;justify-content:center;}
+.modal-bg.open{display:flex;}
+.modal{background:#fff;border-radius:12px;border:0.5px solid #e5e5e5;padding:1.25rem;width:500px;max-width:96%;max-height:92vh;overflow-y:auto;}
+.modal-lg{width:600px;}
+.m-title{font-size:14px;font-weight:600;margin-bottom:1rem;color:#1a1a1a;display:flex;align-items:center;gap:7px;}
+.m-sec{font-size:10px;font-weight:600;color:#888;text-transform:uppercase;letter-spacing:.05em;margin:14px 0 8px;padding-bottom:4px;border-bottom:0.5px solid #e5e5e5;}
+.m-field{margin-bottom:10px;}
+.m-field label{font-size:11px;color:#666;display:block;margin-bottom:3px;}
+.m-field input,.m-field select,.m-field textarea{width:100%;font-size:12px;padding:7px 10px;border:0.5px solid #ddd;border-radius:6px;background:#fff;color:#1a1a1a;font-family:inherit;}
+.m-field textarea{resize:vertical;min-height:50px;}
+.m-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.m-row3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;}
+.m-actions{display:flex;gap:8px;justify-content:flex-end;margin-top:1rem;}
+.upload-zone{border:1.5px dashed #ddd;border-radius:8px;padding:14px;text-align:center;color:#aaa;font-size:11px;cursor:pointer;}
+.upload-zone:hover{background:#fafaf8;}
+.upload-zone.has-file{border-color:#3b6d11;background:#eaf3de;color:#3b6d11;}
+
+.recib-banner{background:#e1f5ee;border:0.5px solid #5dcaa5;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;gap:10px;}
+.recib-banner-text{font-size:12px;color:#085041;font-weight:500;}
+.recib-banner-sub{font-size:11px;color:#0f6e56;}
+
+/* TOAST */
+.toast-wrap{position:fixed;bottom:1.5rem;right:1.5rem;z-index:999;display:flex;flex-direction:column;gap:8px;}
+.toast{background:#1a1a1a;color:#fff;padding:10px 16px;border-radius:8px;font-size:12px;display:flex;align-items:center;gap:8px;animation:slideIn .2s ease;max-width:320px;}
+.toast.success{background:#0f6e56;}
+.toast.error{background:#a32d2d;}
+@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* USUARIOS */
+.user-card{background:#fff;border:0.5px solid #e5e5e5;border-radius:8px;padding:12px 14px;display:flex;align-items:center;gap:12px;margin-bottom:8px;}
+.user-avatar{width:36px;height:36px;border-radius:50%;background:#eeedfe;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;color:#534ab7;}
+.user-info{flex:1;}
+.user-name{font-size:13px;font-weight:500;}
+.user-email{font-size:11px;color:#888;}
+
+.empty{text-align:center;padding:2.5rem;color:#aaa;font-size:12px;}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;padding:2rem;color:#888;gap:8px;}
+.spinner{width:16px;height:16px;border:2px solid #e5e5e5;border-top-color:#534ab7;border-radius:50%;animation:spin .6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="login-logo-icon">📦</div>
+      <div>
+        <div class="login-title">Pedidos HIK</div>
+        <div class="login-sub">China · Uruguay · Argentina</div>
+      </div>
+    </div>
+    <div class="login-field"><label>Email</label><input type="email" id="l-email" placeholder="admin@pedidoshik.com" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="login-field"><label>Contraseña</label><input type="password" id="l-pass" placeholder="••••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="login-btn" onclick="doLogin()">Ingresar</button>
+    <div class="login-err" id="l-err">Email o contraseña incorrectos</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <div class="topbar">
+    <div class="brand">
+      📦 Pedidos HIK
+      <span class="brand-dot" id="rt-dot" title="Tiempo real"></span>
+    </div>
+    <div class="topbar-right">
+      <div class="user-badge">
+        <span id="user-name-top"></span>
+        <span class="role-pill" id="user-role-pill"></span>
+      </div>
+      <button class="logout-btn" onclick="doLogout()">Salir</button>
+    </div>
+  </div>
+
+  <div class="main-tabs" id="main-tabs">
+    <div class="main-tab active" onclick="goTab('dash',this)">📊 Dashboard</div>
+    <div class="main-tab" onclick="goTab('buscar',this)">🔍 Buscar</div>
+    <div class="main-tab" onclick="goTab('china',this)">🇨🇳 China <span class="cnt" id="cn-cnt">0</span></div>
+    <div class="main-tab" onclick="goTab('uy',this)">🇺🇾 Uruguay <span class="cnt" id="uy-cnt">0</span></div>
+    <div class="main-tab" onclick="goTab('desp',this)">🚚 Despachados <span class="cnt" id="d-cnt">0</span></div>
+    <div class="main-tab tab-recib" onclick="goTab('recibidos',this)">✅ Recibidos ARG <span class="cnt" id="r-cnt">0</span></div>
+    <div class="main-tab" onclick="goTab('proyectos',this)">📁 Proyectos <span class="cnt" id="p-cnt">0</span></div>
+    <div class="main-tab" onclick="goTab('deudas',this)">💰 Deudas <span class="cnt" id="deuda-cnt">0</span></div>
+    <div class="main-tab tab-admin" id="tab-admin" style="display:none" onclick="goTab('admin',this)">⚙️ Admin <span class="cnt" id="a-cnt">0</span></div>
+  </div>
+
+  <div class="content">
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dash">
+      <div class="dash-cards">
+        <div class="dash-card" id="dcard-sindesp">
+          <div class="dash-card-ico" style="background:#faeeda">📦</div>
+          <div class="dash-card-info">
+            <div class="dash-card-label">Sin despachar</div>
+            <div class="dash-card-num" id="dc-sindesp">0</div>
+            <div class="dash-card-sub" id="dc-sindesp-sub">pedidos con ítems pendientes</div>
+          </div>
+        </div>
+        <div class="dash-card" id="dcard-desp">
+          <div class="dash-card-ico" style="background:#e6f1fb">🚚</div>
+          <div class="dash-card-info">
+            <div class="dash-card-label">Despachados</div>
+            <div class="dash-card-num" id="dc-desp">0</div>
+            <div class="dash-card-sub" id="dc-desp-sub">pedidos con algún despacho</div>
+          </div>
+        </div>
+        <div class="dash-card" id="dcard-recib">
+          <div class="dash-card-ico" style="background:#eef0fb">✅</div>
+          <div class="dash-card-info">
+            <div class="dash-card-label">Recibidos en Argentina</div>
+            <div class="dash-card-num" id="dc-recib">0</div>
+            <div class="dash-card-sub" id="dc-recib-sub">pedidos con algo recibido</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Resumen por origen (uno abajo del otro, a lo ancho) -->
+      <div style="margin-top:1.5rem;">
+        <div class="dep-header dep-china"><div><div class="dep-title dep-title-china">📦 Origen China</div><div class="dep-sub" id="d-china-sub">—</div></div></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th style="width:18%">PO#</th><th style="width:22%">Proyecto</th><th style="width:15%">Ítems</th><th style="width:15%">Pend.</th><th style="width:15%">Desp.</th><th style="width:15%">Recib.</th></tr></thead>
+          <tbody id="dash-china-tbl"></tbody>
+        </table></div>
+      </div>
+      <div style="margin-top:1.5rem;">
+        <div class="dep-header dep-uy"><div><div class="dep-title dep-title-uy">📦 Origen Uruguay</div><div class="dep-sub" id="d-uy-sub">—</div></div></div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th style="width:18%">PO#</th><th style="width:22%">Proyecto</th><th style="width:15%">Ítems</th><th style="width:15%">Pend.</th><th style="width:15%">Desp.</th><th style="width:15%">Recib.</th></tr></thead>
+          <tbody id="dash-uy-tbl"></tbody>
+        </table></div>
+      </div>
+    </div>
+
+    <!-- BUSCAR -->
+    <div class="panel" id="panel-buscar">
+      <div class="gsearch-wrap">
+        <span class="gsearch-ico">🔍</span>
+        <input class="gsearch" id="gq" placeholder="Buscá por código, SAP, descripción... ej: QAZ0, DS-K1T, 302920" oninput="globalSearch(this.value)" autocomplete="off">
+      </div>
+      <div style="font-size:11px;color:#888;margin-bottom:1rem;" id="search-hint">Escribí al menos 2 caracteres — busca en todos los depósitos incluyendo recibidos</div>
+      <div id="search-results"></div>
+    </div>
+
+    <!-- CHINA -->
+    <div class="panel" id="panel-china">
+      <div class="dep-header dep-china">
+        <div><div class="dep-title dep-title-china">📦 Origen: China</div><div class="dep-sub" id="china-sub">—</div></div>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input class="search" id="china-s" placeholder="Buscar..." oninput="renderDep('China')">
+          <select class="fsel" id="china-fest" onchange="renderDep('China')"><option value="">Todos los estados</option><option>Pendiente</option><option>En tránsito</option><option>Despachado</option></select>
+          <select class="fsel" id="china-fpo" onchange="renderDep('China')"><option value="">Todos los POs</option></select>
+          <select class="fsel" id="china-fproy" onchange="renderDep('China')"><option value="">Todos los proyectos</option></select>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-sm" onclick="exportDep('China')">📥 Exportar Excel</button>
+          <button class="btn-p china" id="btn-add-china" onclick="openNewItem('China')">+ Agregar ítem</button>
+        </div>
+      </div>
+      <div id="china-body"></div>
+    </div>
+
+    <!-- URUGUAY -->
+    <div class="panel" id="panel-uy">
+      <div class="dep-header dep-uy">
+        <div><div class="dep-title dep-title-uy">📦 Origen: Uruguay</div><div class="dep-sub" id="uy-sub">—</div></div>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input class="search" id="uy-s" placeholder="Buscar..." oninput="renderDep('Uruguay')">
+          <select class="fsel" id="uy-fest" onchange="renderDep('Uruguay')"><option value="">Todos los estados</option><option>Pendiente</option><option>En tránsito</option><option>Despachado</option></select>
+          <select class="fsel" id="uy-fpo" onchange="renderDep('Uruguay')"><option value="">Todos los POs</option></select>
+          <select class="fsel" id="uy-fproy" onchange="renderDep('Uruguay')"><option value="">Todos los proyectos</option></select>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-sm" onclick="exportDep('Uruguay')">📥 Exportar Excel</button>
+          <button class="btn-p" id="btn-add-uy" onclick="openNewItem('Uruguay')">+ Agregar ítem</button>
+        </div>
+      </div>
+      <div id="uy-body"></div>
+    </div>
+
+    <!-- DESPACHADOS -->
+    <div class="panel" id="panel-desp">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input class="search" id="desp-s" placeholder="Buscar..." oninput="renderDesp()">
+          <select class="fsel" id="desp-fc" onchange="renderDesp()"><option value="">Todos los courier</option><option>FedEx</option><option>DHL</option><option>UPS</option></select>
+          <select class="fsel" id="desp-fd" onchange="renderDesp()"><option value="">China + Uruguay</option><option value="China">Solo China</option><option value="Uruguay">Solo Uruguay</option></select>
+        </div>
+        <button class="btn-sm" onclick="exportDespachados()">📥 Exportar Excel</button>
+      </div>
+      <div id="desp-body"></div>
+    </div>
+
+    <!-- RECIBIDOS -->
+    <div class="panel" id="panel-recibidos">
+      <div class="dep-header dep-recib">
+        <div><div class="dep-title dep-title-recib">📍 Recibidos en Argentina</div><div class="dep-sub" id="recib-sub">—</div></div>
+      </div>
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input class="search" id="recib-s" placeholder="Buscar..." oninput="renderRecibidos()">
+          <select class="fsel" id="recib-fd" onchange="renderRecibidos()"><option value="">China + Uruguay</option><option value="China">Solo China</option><option value="Uruguay">Solo Uruguay</option></select>
+          <select class="fsel" id="recib-fproy" onchange="renderRecibidos()"><option value="">Todos los proyectos</option></select>
+        </div>
+        <button class="btn-sm" onclick="exportRecibidos()">📥 Exportar Excel</button>
+      </div>
+      <div id="recib-body"></div>
+    </div>
+
+    <!-- PROYECTOS -->
+    <div class="panel" id="panel-proyectos">
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input class="search" id="proy-s" placeholder="Buscar proyecto..." oninput="renderProyectoTab()">
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-p" id="btn-new-proy" onclick="openNuevoProyecto()">+ Nuevo proyecto</button>
+        </div>
+      </div>
+      <div id="proy-body"></div>
+    </div>
+
+    <!-- DEUDAS -->
+    <div class="panel" id="panel-deudas">
+      <div class="dep-header" style="background:#faeeda;border-left:3px solid #ba7517;">
+        <div><div class="dep-title" style="color:#854f0b">💰 Estado de cuenta — HIKVISION</div><div class="dep-sub" id="deuda-resumen">—</div></div>
+      </div>
+
+      <!-- Resumen total -->
+      <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
+        <div class="stat"><div class="stat-l">Total facturado</div><div class="stat-v" style="font-size:17px" id="deuda-total">$0,00</div></div>
+        <div class="stat ok"><div class="stat-l">Total pagado</div><div class="stat-v" style="font-size:17px" id="deuda-pagado">$0,00</div></div>
+        <div class="stat danger"><div class="stat-l">Adeudado total</div><div class="stat-v" style="font-size:17px" id="deuda-saldo">$0,00</div></div>
+        <div class="stat warn"><div class="stat-l">Seleccionado</div><div class="stat-v" style="font-size:17px" id="deuda-selec">$0,00</div></div>
+      </div>
+
+      <!-- Sub-tabs China / Uruguay -->
+      <div style="display:flex;gap:4px;margin-bottom:1rem;background:#f0f0ee;border-radius:8px;padding:3px;width:fit-content;">
+        <div class="deuda-subtab" id="dst-China" onclick="switchDeudaTab('China')" style="padding:6px 16px;font-size:12px;border-radius:6px;cursor:pointer;background:#fff;font-weight:500;">🇨🇳 China (HQ)</div>
+        <div class="deuda-subtab" id="dst-Uruguay" onclick="switchDeudaTab('Uruguay')" style="padding:6px 16px;font-size:12px;border-radius:6px;cursor:pointer;color:#666;">🇺🇾 Uruguay (HDTECH)</div>
+      </div>
+
+      <div class="toolbar">
+        <div class="toolbar-left">
+          <input class="search" id="deuda-s" placeholder="Buscar CI, PO..." oninput="renderDeudas()">
+          <select class="fsel" id="deuda-fstatus" onchange="renderDeudas()">
+            <option value="">Todos</option>
+            <option value="pendiente">Con saldo pendiente</option>
+            <option value="pagado">Saldados</option>
+            <option value="vencido">Vencidos</option>
+          </select>
+        </div>
+        <div style="display:flex;gap:6px;">
+          <button class="btn-sm" onclick="exportDeudas()">📥 Exportar</button>
+          <button class="btn-sm" id="deuda-pagar-selec" onclick="pagarSeleccionados()" style="display:none;border-color:#0f6e56;color:#0f6e56">💵 Pagar seleccionados</button>
+          <button class="btn-sm" id="deuda-eliminar-selec" onclick="eliminarDeudasSeleccionadas()" style="display:none;border-color:#a32d2d;color:#a32d2d">🗑 Eliminar seleccionados</button>
+          <button class="btn-p" onclick="document.getElementById('imp-deuda-origen').value=deudaTabActual;document.getElementById('imp-deuda-origen-label').textContent=deudaTabActual;document.getElementById('imp-deuda-cols-china').style.display=deudaTabActual==='China'?'':'none';document.getElementById('imp-deuda-cols-uy').style.display=deudaTabActual==='Uruguay'?'':'none';openModal('importDeudaModal')">📤 Pegar deudas</button>
+        </div>
+      </div>
+      <div id="deudas-body"></div>
+    </div>
+
+    <!-- ADMIN -->
+    <div class="panel" id="panel-admin">
+      <!-- Usuarios arriba, ancho contenido -->
+      <div style="margin-bottom:1.5rem;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+          <div style="font-size:13px;font-weight:600;">👥 Usuarios</div>
+          <button class="btn-p" onclick="openModal('newUserModal')">+ Nuevo usuario</button>
+        </div>
+        <div id="users-list" style="max-width:600px;"></div>
+      </div>
+
+      <!-- Configuraciones en 3 columnas -->
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem;margin-bottom:1.5rem;">
+
+        <!-- PROVEEDORES -->
+        <div class="tbl-wrap" style="padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:600;">🚛 Proveedores</div>
+            <button class="btn-sm" onclick="addCourierInline()">+ Agregar</button>
+          </div>
+          <div id="admin-couriers-preview"></div>
+          <div style="margin-top:12px;padding-top:12px;border-top:0.5px solid #e5e5e5;">
+            <button class="btn-sm" onclick="limpiarDatosViejos()" style="width:100%;border-color:#ba7517;color:#854f0b">🔧 Reparar estados mal cargados</button>
+            <div style="font-size:10px;color:#999;margin-top:4px;">Corrige ítems con "Despachado/Pendiente" guardado en el campo equivocado por imports viejos.</div>
+          </div>
+        </div>
+
+        <!-- ESTADOS STOCK -->
+        <div class="tbl-wrap" style="padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:600;">📊 Estados de stock</div>
+            <button class="btn-sm" onclick="addEstadoInline('stock')">+ Agregar</button>
+          </div>
+          <div id="admin-stock-list"></div>
+        </div>
+
+        <!-- ESTADOS DESPACHO -->
+        <div class="tbl-wrap" style="padding:14px;">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <div style="font-size:12px;font-weight:600;">🚚 Estados de despacho</div>
+            <button class="btn-sm" onclick="addEstadoInline('despacho')">+ Agregar</button>
+          </div>
+          <div id="admin-despacho-list"></div>
+        </div>
+
+      </div>
+
+      <!-- PERMISOS -->
+      <div style="margin-top:1.5rem;max-width:600px;">
+        <div style="font-size:13px;font-weight:600;margin-bottom:12px;">📋 Permisos por rol</div>
+        <div class="tbl-wrap"><table>
+          <thead><tr><th>Función</th><th>Admin</th><th>Compras</th><th>Vendedor</th></tr></thead>
+          <tbody>
+            <tr><td>Ver pedidos</td><td>✅</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Crear/editar ítems</td><td>✅</td><td>✅</td><td>❌</td></tr>
+            <tr><td>Despachar / Recibir</td><td>✅</td><td>✅</td><td>❌</td></tr>
+            <tr><td>Importar Excel</td><td>✅</td><td>✅</td><td>❌</td></tr>
+            <tr><td>Ver proyectos</td><td>✅</td><td>✅</td><td>✅</td></tr>
+            <tr><td>Crear proyectos</td><td>✅</td><td>✅</td><td>❌</td></tr>
+            <tr><td>Gestionar usuarios</td><td>✅</td><td>❌</td><td>❌</td></tr>
+          </tbody>
+        </table></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- TOAST CONTAINER -->
+<div class="toast-wrap" id="toasts"></div>
+
+<!-- ===== MODALS ===== -->
+
+<!-- Nuevo ítem -->
+<div class="modal-bg" id="newItemModal">
+<div class="modal">
+  <div class="m-title">➕ Agregar ítem al pedido</div>
+  <div class="m-row">
+    <div class="m-field"><label>Depósito</label><select id="ni-dep"><option value="China">China</option><option value="Uruguay">Uruguay</option></select></div>
+    <div class="m-field"><label>PO#</label><input id="ni-po" placeholder="ej. C2603000521"></div>
+  </div>
+  <div class="m-row">
+    <div class="m-field"><label>HIK Order No.</label><input id="ni-hik-order" placeholder="ej. 3000619185"></div>
+    <div class="m-field"><label>HIK Item No.</label><input id="ni-item" placeholder="ej. 10"></div>
+  </div>
+  <div class="m-field"><label>HIK SAP Code</label><input id="ni-sap" placeholder="ej. 305402565"></div>
+  <div class="m-field"><label>Material Description</label><input id="ni-mat" placeholder="ej. DS-K1T673DWX-E1"></div>
+  <div class="m-row">
+    <div class="m-field"><label>QTY</label><input id="ni-qty" type="number" value="1"></div>
+    <div class="m-field"><label>Price/Unit (USD)</label><input id="ni-price" type="number" value="0" step="0.01"></div>
+  </div>
+  <div class="m-row">
+    <div class="m-field"><label>Estado</label><select id="ni-est"><option value="Pendiente">Pendiente</option><option value="En tránsito">En tránsito</option><option value="Despachado">Despachado</option></select></div>
+    <div class="m-field"><label>Fecha estimada</label><input id="ni-fecha" type="date"></div>
+  </div>
+  <div class="m-field"><label>Proyecto (opcional)</label>
+    <select id="ni-proy"><option value="">Sin proyecto — stock libre</option></select>
+  </div>
+  <div class="m-actions">
+    <button class="btn-sm" onclick="closeModal('newItemModal')">Cancelar</button>
+    <button class="btn-p" onclick="saveNewItem()">✓ Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Despacho -->
+<div class="modal-bg" id="despModal">
+<div class="modal">
+  <div class="m-title">🚚 Registrar despacho</div>
+  <input type="hidden" id="dm-id">
+  <div style="background:#fafaf8;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;"><span id="dm-info" style="font-weight:500;"></span></div>
+  <div class="m-sec">Datos del envío</div>
+  <div class="m-row3">
+    <div class="m-field"><label>Courier</label><select id="dm-courier"><option>FedEx</option><option>DHL</option><option>UPS</option><option>Otro</option></select></div>
+    <div class="m-field"><label>Método</label><select id="dm-method"><option>By Air</option><option>By Sea</option><option>By Road</option></select></div>
+    <div class="m-field"><label>Fecha despacho</label><input id="dm-fecha" type="date"></div>
+  </div>
+  <div class="m-row">
+    <div class="m-field"><label>Tracking</label><input id="dm-track" placeholder="ej. 1Z999AA..."></div>
+    <div class="m-field"><label>Fecha estimada llegada</label><input id="dm-llegada" type="date"></div>
+  </div>
+  <div class="m-sec">Guía de envío</div>
+  <div class="m-row">
+    <div class="m-field"><label>N° de guía</label><input id="dm-guia-num"></div>
+    <div class="m-field"><label>Referencia (AWB, MBL…)</label><input id="dm-guia-ref"></div>
+  </div>
+  <div class="m-field">
+    <label>Guías / documentos (PDF, Excel, imagen — podés adjuntar varios)</label>
+    <div class="upload-zone" id="dm-zone" onclick="document.getElementById('dm-pdf').click()">
+      📎 <span id="dm-pdf-name">Agregar archivo (PDF, Excel, imagen...)</span>
+    </div>
+    <input type="file" id="dm-pdf" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.doc,.docx" multiple style="display:none" onchange="onPdfSel(this)">
+    <div id="dm-pdf-list" style="margin-top:8px;"></div>
+  </div>
+  <div class="m-field"><label>Notas</label><textarea id="dm-notas" rows="2"></textarea></div>
+  <div class="m-actions">
+    <button class="btn-sm" onclick="closeModal('despModal')">Cancelar</button>
+    <button class="btn-p" onclick="saveDespacho()">✓ Confirmar despacho</button>
+  </div>
+</div>
+</div>
+
+<!-- Recepción ARG -->
+<div class="modal-bg" id="recibModal">
+<div class="modal">
+  <div class="m-title">📍 Recepción en Argentina</div>
+  <input type="hidden" id="rm-id">
+  <div class="recib-banner">
+    <div>
+      <div class="recib-banner-text" id="rm-info">—</div>
+      <div class="recib-banner-sub">Una vez confirmado pasa al archivo de Recibidos ARG y desaparece del flujo activo</div>
+    </div>
+  </div>
+  <div class="m-row">
+    <div class="m-field"><label>Fecha de recepción</label><input id="rm-fecha" type="date"></div>
+    <div class="m-field"><label>Recibido por</label><input id="rm-quien" placeholder="Nombre"></div>
+  </div>
+  <div class="m-field"><label>Destino / depósito en ARG</label><input id="rm-lugar" placeholder="ej. Depósito Central, Obra Metrotranvía..."></div>
+  <div class="m-field"><label>Estado del bulto</label>
+    <select id="rm-bulto"><option value="OK">Perfecto estado</option><option value="Daño leve">Daño leve en embalaje</option><option value="Daño en producto">Daño en producto</option><option value="Faltante">Faltante de unidades</option></select>
+  </div>
+  <div class="m-field"><label>Notas de recepción</label><textarea id="rm-notas" rows="2"></textarea></div>
+  <div class="m-actions">
+    <button class="btn-sm" onclick="closeModal('recibModal')">Cancelar</button>
+    <button class="btn-p green" onclick="saveRecepcion()">✓ Confirmar recepción</button>
+  </div>
+</div>
+</div>
+
+<!-- Ver despacho/recibido -->
+<div class="modal-bg" id="verModal">
+<div class="modal">
+  <div class="m-title" id="ver-title">Detalle</div>
+  <div id="ver-content"></div>
+  <div class="m-actions"><button class="btn-sm" onclick="closeModal('verModal')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- Nuevo proyecto -->
+<div class="modal-bg" id="newProyModal">
+<div class="modal" style="width:380px;">
+  <div class="m-title">📁 Nuevo proyecto</div>
+  <div class="m-field"><label>Nombre</label><input id="np-nombre" placeholder="ej. Metrotranvía Fase 2"></div>
+  <div class="m-field"><label>Descripción (opcional)</label><input id="np-desc" placeholder="Cliente, obra, etc."></div>
+  <div class="m-actions">
+    <button class="btn-sm" onclick="closeModal('newProyModal')">Cancelar</button>
+    <button class="btn-p" onclick="saveProyecto()">✓ Crear</button>
+  </div>
+</div>
+</div>
+
+<!-- Nuevo usuario -->
+<div class="modal-bg" id="newUserModal">
+<div class="modal" style="width:400px;">
+  <div class="m-title" id="nu-title">👤 Nuevo usuario</div>
+  <input type="hidden" id="nu-id">
+  <div class="m-field"><label>Nombre completo</label><input id="nu-nombre" placeholder="ej. Juan Pérez"></div>
+  <div class="m-field"><label>Email</label><input id="nu-email" type="email" placeholder="juan@empresa.com"></div>
+  <div class="m-field"><label>Contraseña <span id="nu-pass-hint" style="color:#aaa">(dejar vacío para no cambiar)</span></label><input id="nu-pass" type="password" placeholder="Nueva contraseña"></div>
+  <div class="m-row">
+    <div class="m-field"><label>Rol</label>
+      <select id="nu-rol"><option value="vendedor">Vendedor</option><option value="compras">Compras</option><option value="admin">Admin</option></select>
+    </div>
+    <div class="m-field"><label>Estado</label>
+      <select id="nu-activo"><option value="true">Activo</option><option value="false">Inactivo</option></select>
+    </div>
+  </div>
+  <div class="m-actions">
+    <button class="btn-sm" onclick="closeModal('newUserModal')">Cancelar</button>
+    <button class="btn-p" onclick="saveUser()">✓ Guardar</button>
+  </div>
+</div>
+</div>
+
+<!-- Importar -->
+<!-- MODAL: Editar ítem -->
+<div class="modal-bg" id="editItemModal">
+<div class="modal modal-lg">
+  <div class="m-title">✏️ Editar ítem</div>
+  <input type="hidden" id="ei-id">
+  <div style="background:#fafaf8;border-radius:8px;padding:8px 12px;margin-bottom:12px;font-size:11px;color:#666;" id="ei-info"></div>
+  <div class="m-sec">Datos del pedido</div>
+  <div class="m-row">
+    <div class="m-field"><label>HIK Order No.</label><input id="ei-hik-order"></div>
+    <div class="m-field"><label>HIK SAP Code</label><input id="ei-sap"></div>
+  </div>
+  <div class="m-field"><label>Material Description</label><input id="ei-mat"></div>
+  <div class="m-row3">
+    <div class="m-field"><label>QTY</label><input id="ei-qty" type="number"></div>
+    <div class="m-field"><label>Price/Unit (USD)</label><input id="ei-price" type="number" step="0.01"></div>
+    <div class="m-field"><label>Currency</label><input id="ei-currency"></div>
+  </div>
+  <div class="m-row">
+    <div class="m-field"><label>Fecha estimada de llegada</label><input id="ei-fecha" type="text" placeholder="AAAA-MM-DD, DD/MM/AAAA o texto libre"></div>
+    <div class="m-field"><label>Shipment Method</label><input id="ei-shipmethod"></div>
+  </div>
+  <div class="m-sec">Estado del proveedor</div>
+  <div class="m-row">
+    <div class="m-field"><label>Estado stock / disponibilidad</label>
+      <select id="ei-estado-stock"><option value="">—</option></select>
+    </div>
+    <div class="m-field"><label>Guía del proveedor</label><input id="ei-guia" placeholder="N° de guía"></div>
+  </div>
+  <div class="m-sec">Asignación interna</div>
+  <div class="m-row">
+    <div class="m-field"><label>Proyecto</label>
+      <select id="ei-proy"><option value="">Sin proyecto — stock libre</option></select>
+    </div>
+    <div class="m-field"><label>Estado de despacho</label>
+      <select id="ei-estado"><option value="">—</option></select>
+    </div>
+  </div>
+  <div class="m-field"><label>Notas internas</label><textarea id="ei-notas" rows="2"></textarea></div>
+  <div class="m-actions">
+    <button class="btn-sm danger" onclick="deleteItem()">🗑 Eliminar</button>
+    <div style="flex:1"></div>
+    <button class="btn-sm" onclick="closeModal('editItemModal')">Cancelar</button>
+    <button class="btn-p" onclick="saveEditItem()">✓ Guardar cambios</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL: Proveedores de despacho -->
+<div class="modal-bg" id="couriersModal">
+<div class="modal" style="width:440px;">
+  <div class="m-title">🚛 Proveedores de despacho</div>
+  <div id="couriers-list" style="margin-bottom:14px;"></div>
+  <div style="border-top:0.5px solid #e5e5e5;padding-top:12px;">
+    <div style="font-size:12px;font-weight:500;margin-bottom:8px;" id="nc-form-title">Agregar proveedor</div>
+    <input type="hidden" id="nc-edit-idx" value="">
+    <div class="m-row">
+      <div class="m-field"><label>Nombre</label><input id="nc-nombre" placeholder="ej. FedEx, DHL, Aeropost"></div>
+      <div class="m-field"><label>Tipo</label>
+        <select id="nc-tipo"><option value="Aéreo">Aéreo</option><option value="Marítimo">Marítimo</option><option value="Terrestre">Terrestre</option></select>
+      </div>
+    </div>
+    <div class="m-field"><label>Notas (opcional)</label><input id="nc-notas" placeholder="ej. para envíos urgentes"></div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-p" onclick="saveCourier()" style="flex:1" id="nc-save-btn">+ Agregar proveedor</button>
+      <button class="btn-sm" id="nc-cancel-btn" style="display:none" onclick="cancelEditCourier()">Cancelar</button>
+    </div>
+  </div>
+  <div class="m-actions"><button class="btn-sm" onclick="closeModal('couriersModal')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL: Admin listas configurables (estados stock / despacho) -->
+<div class="modal-bg" id="adminListModal">
+<div class="modal" style="width:400px;">
+  <div class="m-title" id="al-title">Estados</div>
+  <input type="hidden" id="al-type">
+  <div id="al-list" style="margin-bottom:14px;"></div>
+  <div style="border-top:0.5px solid #e5e5e5;padding-top:12px;">
+    <div style="font-size:12px;font-weight:500;margin-bottom:8px;" id="al-form-title">Agregar estado</div>
+    <input type="hidden" id="al-edit-idx" value="">
+    <div class="m-row">
+      <div class="m-field"><label>Nombre del estado</label><input id="al-nombre" placeholder="ej. In Stock, ready, Problema"></div>
+      <div class="m-field"><label>Color</label>
+        <select id="al-color">
+          <option value="green">🟢 Verde (listo)</option>
+          <option value="blue">🔵 Azul (en tránsito)</option>
+          <option value="orange">🟠 Naranja (pendiente)</option>
+          <option value="red">🔴 Rojo (problema)</option>
+          <option value="gray">⚫ Gris (neutro)</option>
+        </select>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn-p" onclick="saveAdminListItem()" style="flex:1" id="al-save-btn">+ Agregar</button>
+      <button class="btn-sm" id="al-cancel-btn" style="display:none" onclick="cancelEditAdminList()">Cancelar</button>
+    </div>
+  </div>
+  <div class="m-actions"><button class="btn-sm" onclick="closeModal('adminListModal')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL: Documentos del pedido (facturas, etc) -->
+<div class="modal-bg" id="docsModal">
+<div class="modal" style="width:480px;">
+  <div class="m-title">📎 Documentos del pedido <span id="docs-po-label" style="color:#534ab7"></span></div>
+  <input type="hidden" id="docs-po">
+  <input type="hidden" id="docs-dep">
+  <div style="font-size:11px;color:#888;margin-bottom:12px;">Facturas, packing lists, certificados, etc. Podés subir varios (PDF o Excel).</div>
+  <div id="docs-list" style="margin-bottom:14px;"></div>
+  <div style="border-top:0.5px solid #e5e5e5;padding-top:12px;">
+    <div style="font-size:12px;font-weight:500;margin-bottom:8px;">Agregar documento</div>
+    <div class="m-row">
+      <div class="m-field"><label>Tipo</label>
+        <select id="doc-tipo"><option>Factura</option><option>Packing List</option><option>Certificado</option><option>Comprobante de pago</option><option>Otro</option></select>
+      </div>
+      <div class="m-field"><label>Descripción (opcional)</label><input id="doc-desc" placeholder="ej. Factura parcial 1/2"></div>
+    </div>
+    <div class="m-field">
+      <div class="upload-zone" onclick="document.getElementById('doc-file').click()">
+        📎 <span id="doc-fn">Seleccionar archivos (PDF, Excel, imagen...)</span>
+      </div>
+      <input type="file" id="doc-file" accept=".pdf,.xlsx,.xls,.csv,.jpg,.jpeg,.png,.doc,.docx" multiple style="display:none" onchange="onDocFileSel(this)">
+    </div>
+    <button class="btn-p" onclick="saveDoc()" style="width:100%;margin-top:4px;">+ Agregar documento</button>
+  </div>
+  <div class="m-actions"><button class="btn-sm" onclick="closeModal('docsModal')">Cerrar</button></div>
+</div>
+</div>
+
+<!-- MODAL: Importar deudas -->
+<div class="modal-bg" id="importDeudaModal">
+<div class="modal">
+  <div class="m-title">📤 Pegar deudas — <span id="imp-deuda-origen-label" style="color:#534ab7">China</span></div>
+  <input type="hidden" id="imp-deuda-origen" value="China">
+  <div style="background:#fafaf8;border:0.5px solid #e5e5e5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#666;">
+    <div style="font-weight:500;margin-bottom:4px;">Copiá las líneas de deuda desde el Excel de Hikvision (con o sin encabezado).</div>
+    <div id="imp-deuda-cols-china">Columnas China: <b>CI No. | Delivery date | Payment Term | Status | Amount | Paid | Owe Balance | Currency | ATA | Payment Due date | Overdue days | Interest | Remark</b></div>
+    <div id="imp-deuda-cols-uy" style="display:none">Columnas Uruguay: <b>PI No | PO | Delivery date | Payment Term | Status | Amount | (Pallet) | ATA | Paid/Credit | Owe balance | Currency | Payment Due date | Overdue days</b></div>
+    <div style="margin-top:6px;color:#0f6e56;">✓ Si la CI/PI ya existe, se actualiza con los nuevos valores</div>
+  </div>
+  <div class="m-field">
+    <textarea id="imp-deuda-txt" rows="8" placeholder="Pegá acá las líneas copiadas del Excel..."></textarea>
+  </div>
+  <div id="imp-deuda-errors" style="display:none;margin-top:10px;background:#fcebeb;border:0.5px solid #f09595;border-radius:8px;padding:10px 14px;max-height:160px;overflow-y:auto;">
+    <div style="font-size:11px;font-weight:600;color:#a32d2d;margin-bottom:6px;">⚠️ Errores:</div>
+    <div id="imp-deuda-errors-list" style="font-size:11px;color:#791f1f;font-family:monospace;line-height:1.8;"></div>
+  </div>
+  <div class="m-actions">
+    <button class="btn-sm" onclick="closeModal('importDeudaModal')">Cancelar</button>
+    <button class="btn-p" onclick="doImportDeudas()">✓ Importar deudas</button>
+  </div>
+</div>
+</div>
+
+<!-- MODAL: Registrar pago -->
+<div class="modal-bg" id="pagoModal">
+<div class="modal" style="width:440px;">
+  <div class="m-title">💵 Registrar pago</div>
+  <input type="hidden" id="pago-ids">
+  <div class="recib-banner" style="background:#faeeda;border-color:#e0b366;">
+    <div>
+      <div class="recib-banner-text" id="pago-info" style="color:#854f0b">—</div>
+      <div class="recib-banner-sub" style="color:#ba7517" id="pago-saldo-info">Saldo pendiente: —</div>
+    </div>
+  </div>
+  <div class="m-row">
+    <div class="m-field"><label>Monto a pagar (USD)</label><input id="pago-monto" type="number" step="0.01" placeholder="0.00"></div>
+    <div class="m-field"><label>Fecha</label><input id="pago-fecha" type="date"></div>
+  </div>
+  <div class="m-row">
+    <div class="m-field"><label>Método</label>
+      <select id="pago-metodo"><option>Transferencia</option><option>Crédito</option><option>Compensación</option><option>Otro</option></select>
+    </div>
+    <div class="m-field"><label>&nbsp;</label>
+      <button class="btn-sm" onclick="document.getElementById('pago-monto').value=document.getElementById('pago-monto').dataset.saldo||0" style="width:100%">Pagar saldo total</button>
+    </div>
+  </div>
+  <div class="m-field"><label>Nota</label><input id="pago-nota" placeholder="ej. cleared on 7/10, pago parcial..."></div>
+  <div class="m-actions">
+    <button class="btn-sm" onclick="closeModal('pagoModal')">Cancelar</button>
+    <button class="btn-p green" onclick="savePago()">✓ Registrar pago</button>
+  </div>
+</div>
+</div>
+
+<div class="modal-bg" id="importModal">
+<div class="modal">
+  <div class="m-title">📤 Importar desde Excel / CSV</div>
+
+  <div style="background:#eeedfe;border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between;gap:10px;">
+    <div>
+      <div style="font-size:12px;font-weight:500;color:#3c3489;">¿Primera vez? Descargá la plantilla</div>
+      <div style="font-size:11px;color:#534ab7;">Completá en Excel y pegá acá abajo, o subí el CSV directamente</div>
+    </div>
+    <button class="btn-sm" style="border-color:#534ab7;color:#534ab7;white-space:nowrap" onclick="downloadTemplate()">⬇ Plantilla CSV</button>
+  </div>
+
+  <div style="background:#fafaf8;border:0.5px solid #e5e5e5;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:11px;color:#666;">
+    <div style="font-weight:500;margin-bottom:4px;">📋 Copiá desde Excel incluyendo la fila de títulos (encabezado)</div>
+    <div style="margin-top:4px;">El sistema lee los nombres de las columnas y las ubica solo — <b>no importa el orden ni cuántas columnas mandes</b>. Reconoce: PO#, HIK Order No., HIK Item No., HIK SAP Code, Material, QTY, Price/Unit, Amount, Currency, Estimated Finish Date, Shipment Method, Estado, Guía.</div>
+    <div style="margin-top:6px;color:#0f6e56;">✓ Si el ítem ya existe (mismo PO + Item No. en ese origen) se actualiza automáticamente sin duplicar</div>
+  </div>
+
+  <div class="m-row">
+    <div class="m-field"><label>Depósito destino</label><select id="imp-dep"><option value="China">China</option><option value="Uruguay">Uruguay</option></select></div>
+    <div class="m-field"><label>Proyecto (opcional)</label><select id="imp-proy"><option value="">Sin proyecto</option></select></div>
+  </div>
+
+  <div class="m-field"><label>Pegá los datos desde Excel (Ctrl+C en Excel → Ctrl+V acá)</label>
+    <textarea id="imp-txt" rows="6" placeholder="PO#	HIK Item No.	HIK SAP Code	Material Description	QTY	Price/Unit	Estado	Fecha estimada
+C2603000521	10	305402565	HM-TD2638-15/G0/T1Y	3	1248	Pendiente	2026-07-15"></textarea>
+  </div>
+
+  <div class="m-field">
+    <div class="upload-zone" onclick="document.getElementById('imp-file').click()">
+      📊 <span id="imp-fn">O subí directamente el archivo CSV</span>
+    </div>
+    <input type="file" id="imp-file" accept=".csv,.txt" style="display:none" onchange="readCsv(this)">
+  </div>
+
+  <div id="imp-preview" style="display:none;margin-top:10px;"></div>
+  <div id="imp-errors" style="display:none;margin-top:10px;background:#fcebeb;border:0.5px solid #f09595;border-radius:8px;padding:10px 14px;max-height:180px;overflow-y:auto;">
+    <div style="font-size:11px;font-weight:600;color:#a32d2d;margin-bottom:6px;">⚠️ Errores encontrados:</div>
+    <div id="imp-errors-list" style="font-size:11px;color:#791f1f;font-family:monospace;line-height:1.8;"></div>
+  </div>
+
+  <div class="m-actions">
+    <button class="btn-sm" onclick="closeModal('importModal')">Cancelar</button>
+    <button class="btn-p" onclick="doImport()">✓ Importar</button>
+  </div>
+</div>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://aclwbhmngduwlzsojyag.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFjbHdiaG1uZ2R1d2x6c29qeWFnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE3MDUyNTYsImV4cCI6MjA5NzI4MTI1Nn0.ihwxJ78x2MyTLNMtxEuzBRomSfkr6_nuadKKmKQfiWw';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+let currentUser = null;
+let allItems = [];
+let itemSeleccion = new Set();
+let allProyectos = [];
+let allUsers = [];
+const TODAY = new Date(); TODAY.setHours(0,0,0,0);
+
+// ─── FORMATO DE MONEDA ARGENTINO (1.234,56) ───
+function fmtMoney(n){
+  return (Number(n)||0).toLocaleString('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+}
+
+// ─── SHA256 simple para password ───
+async function sha256(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b=>b.toString(16).padStart(2,'0')).join('');
+}
+
+// ─── LOGIN ───
+async function doLogin(){
+  const email = document.getElementById('l-email').value.trim().toLowerCase();
+  const pass = document.getElementById('l-pass').value;
+  if(!email||!pass) return;
+  const hash = await sha256(pass);
+  const {data,error} = await sb.from('usuarios').select('*').eq('email',email).eq('password_hash',hash).eq('activo',true).single();
+  if(error||!data){
+    document.getElementById('l-err').style.display='block';
+    return;
+  }
+  currentUser = data;
+  document.getElementById('login-screen').style.display='none';
+  document.getElementById('app').style.display='block';
+  document.getElementById('user-name-top').textContent = data.nombre;
+  const rp = document.getElementById('user-role-pill');
+  rp.textContent = data.rol;
+  rp.className = 'role-pill role-'+data.rol;
+  applyRoleUI();
+  updateCourierSelects();
+  updateEstadoSelects();
+  renderAdminCouriersPreview();
+  renderAdminStockDespachoPreview();
+  await loadAll();
+  await loadDeudas();
+  document.getElementById('deuda-cnt').textContent=allDeudas.filter(d=>saldoDeuda(d)>0.01).length;
+  startRealtime();
+}
+
+function doLogout(){
+  currentUser=null; allItems=[]; allProyectos=[]; allUsers=[];
+  document.getElementById('login-screen').style.display='flex';
+  document.getElementById('app').style.display='none';
+  document.getElementById('l-pass').value='';
+  document.getElementById('l-err').style.display='none';
+  if(window._rtChannel) sb.removeChannel(window._rtChannel);
+  document.getElementById('rt-dot').className='brand-dot';
+}
+
+function applyRoleUI(){
+  const rol = currentUser.rol;
+  const canWrite = rol==='admin'||rol==='compras';
+  document.getElementById('tab-admin').style.display = rol==='admin'?'':'none';
+  document.getElementById('btn-add-china').style.display = canWrite?'':'none';
+  document.getElementById('btn-add-uy').style.display = canWrite?'':'none';
+  document.getElementById('btn-new-proy').style.display = canWrite?'':'none';
+  // Importar solo para admin/compras — lo agregamos al topbar
+  if(canWrite){
+    const tb = document.getElementById('main-tabs');
+    if(!document.getElementById('imp-tab')){
+      const t = document.createElement('div');
+      t.className='main-tab'; t.id='imp-tab';
+      t.innerHTML='📤 Importar';
+      t.onclick=()=>openModal('importModal');
+      tb.appendChild(t);
+    }
+  }
+}
+
+// ─── LOAD DATA ───
+async function loadAll(){
+  await Promise.all([loadItems(), loadProyectos(), loadUsers()]);
+  renderAll();
+}
+
+async function loadItems(){
+  const {data} = await sb.from('items').select('*').order('created_at',{ascending:true});
+  allItems = data||[];
+}
+
+async function loadProyectos(){
+  const {data} = await sb.from('proyectos').select('*').eq('activo',true).order('nombre');
+  allProyectos = data||[];
+  updateProySelects();
+}
+
+async function loadUsers(){
+  if(currentUser?.rol!=='admin') return;
+  const {data} = await sb.from('usuarios').select('*').order('nombre');
+  allUsers = data||[];
+  document.getElementById('a-cnt').textContent = allUsers.length;
+  renderUsers();
+}
+
+// ─── REALTIME ───
+function startRealtime(){
+  const ch = sb.channel('pedidos-hik-rt')
+    .on('postgres_changes',{event:'*',schema:'public',table:'items'}, payload=>{
+      handleRt('items', payload);
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'proyectos'}, payload=>{
+      handleRtProy(payload);
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'usuarios'}, payload=>{
+      if(currentUser?.rol==='admin') loadUsers();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'deudas'}, async payload=>{
+      await loadDeudas();
+      if(document.getElementById('panel-deudas')?.classList.contains('active')) renderDeudas();
+    })
+    .on('postgres_changes',{event:'*',schema:'public',table:'pagos'}, async payload=>{
+      await loadDeudas();
+      if(document.getElementById('panel-deudas')?.classList.contains('active')) renderDeudas();
+    })
+    .subscribe(status=>{
+      const dot = document.getElementById('rt-dot');
+      dot.className = 'brand-dot'+(status==='SUBSCRIBED'?' live':'');
+    });
+  window._rtChannel = ch;
+}
+
+function handleRt(table, payload){
+  const {eventType, new:n, old:o} = payload;
+  if(eventType==='INSERT'){
+    allItems.push(n);
+    showToast(`📦 Nuevo ítem: ${n.po}-${n.item_no}`);
+  } else if(eventType==='UPDATE'){
+    const idx = allItems.findIndex(i=>i.id===n.id);
+    if(idx>=0) allItems[idx]=n; else allItems.push(n);
+  } else if(eventType==='DELETE'){
+    allItems = allItems.filter(i=>i.id!==o.id);
+  }
+  renderAll();
+}
+
+function handleRtProy(payload){
+  const {eventType,new:n,old:o} = payload;
+  if(eventType==='INSERT') allProyectos.push(n);
+  else if(eventType==='UPDATE'){const i=allProyectos.findIndex(p=>p.id===n.id);if(i>=0)allProyectos[i]=n;}
+  else if(eventType==='DELETE') allProyectos=allProyectos.filter(p=>p.id!==o.id);
+  updateProySelects();
+  renderAll();
+}
+
+// ─── HELPERS ───
+function isAlerta(p){ if(p.estado==='Despachado'||p.estado==='Recibido ARG') return false; if(!p.fecha_estimada) return false; return new Date(p.fecha_estimada)<TODAY; }
+
+function estPill(p){
+  if(p.estado==='Recibido ARG') return `<span class="pill p-recib"><span class="dot"></span>Recibido ARG</span>`;
+  const al=isAlerta(p);
+  if(al) return `<span class="pill p-alert"><span class="dot"></span>Vencido</span>`;
+  if(p.estado==='Despachado') return `<span class="pill p-desp"><span class="dot"></span>Despachado</span>`;
+  if(p.estado==='En tránsito') return `<span class="pill p-trans"><span class="dot"></span>En tránsito</span>`;
+  return `<span class="pill p-pend"><span class="dot"></span>Pendiente</span>`;
+}
+function proyTag(p){ return p.proyecto_nombre?`<span class="proy-tag proy-on">📁 ${p.proyecto_nombre}</span>`:`<span class="proy-tag proy-off">Stock libre</span>`; }
+function pdfBadge(p){ return p.guia_pdf_nombre?`<span class="pdf-badge">📄 ${p.guia_num||p.courier||''}</span>`:`<span style="font-size:10px;color:#aaa">—</span>`; }
+function canWrite(){ return currentUser?.rol==='admin'||currentUser?.rol==='compras'; }
+
+function accionBtn(p){
+  const e=(p.estado||'').toLowerCase().trim();
+  if(e==='recibido arg') return `<button class="btn-sm" onclick="verItem('${p.id}')" title="Ver">👁</button>`;
+  if(e==='despachado') return canWrite()
+    ? `<div style="display:flex;gap:3px;flex-wrap:wrap"><button class="btn-sm green" onclick="openRecib('${p.id}')" title="Recibir en ARG">📍</button><button class="btn-sm" onclick="openDespacho('${p.id}')" title="Editar despacho / PDFs">🚚</button><button class="btn-sm" onclick="verItem('${p.id}')" title="Ver detalle">👁</button></div>`
+    : `<button class="btn-sm" onclick="verItem('${p.id}')" title="Ver">👁</button>`;
+  return canWrite()
+    ? `<button class="btn-sm" onclick="openDespacho('${p.id}')" title="Despachar">🚚 Despachar</button>`
+    : `${estPill(p)}`;
+}
+
+function normEst(e){
+  if(!e)return'Pendiente';
+  if(['In Transit','En camino por Aéreo','In Stock','ready'].includes(e))return'En tránsito';
+  return e;
+}
+
+function togglePO(id){const el=document.getElementById(id);if(el)el.style.display=el.style.display==='none'?'':'none';}
+
+// ─── RENDER ALL ───
+function renderAll(){
+  updateCounts();
+  renderDash();
+  renderDep('China');
+  renderDep('Uruguay');
+  renderDesp();
+  renderRecibidos();
+  renderProyectoTab();
+  const q=document.getElementById('gq')?.value;
+  if(q&&q.length>=2) globalSearch(q);
+}
+
+function updateCounts(){
+  const activos=allItems.filter(i=>i.estado!=='Recibido ARG');
+  document.getElementById('cn-cnt').textContent=activos.filter(i=>i.deposito==='China').length;
+  document.getElementById('uy-cnt').textContent=activos.filter(i=>i.deposito==='Uruguay').length;
+  document.getElementById('d-cnt').textContent=activos.filter(i=>i.estado==='Despachado').length;
+  document.getElementById('r-cnt').textContent=allItems.filter(i=>i.estado==='Recibido ARG').length;
+  document.getElementById('p-cnt').textContent=allProyectos.length;
+}
+
+// ─── DASHBOARD ───
+let dashView='sindesp';
+
+function renderDash(){
+  // Agrupar TODOS los ítems por PO (sin importar origen)
+  const byPO={};
+  allItems.forEach(i=>{byPO[i.po]=byPO[i.po]||[];byPO[i.po].push(i);});
+
+  // Clasificar cada PO
+  let sinDesp=0, desp=0, recib=0;
+  Object.values(byPO).forEach(its=>{
+    const tieneSinDespachar=its.some(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG');
+    const tieneDespachado=its.some(i=>i.estado==='Despachado'||i.estado==='Recibido ARG');
+    const tieneRecibido=its.some(i=>i.estado==='Recibido ARG');
+    if(tieneSinDespachar) sinDesp++;
+    if(tieneDespachado) desp++;
+    if(tieneRecibido) recib++;
+  });
+
+  document.getElementById('dc-sindesp').textContent=sinDesp;
+  document.getElementById('dc-desp').textContent=desp;
+  document.getElementById('dc-recib').textContent=recib;
+
+  // Tablas resumen por origen
+  function sumTbl(tbid,subid,dep){
+    const arr=allItems.filter(i=>i.deposito===dep);
+    const m={};arr.forEach(p=>{m[p.po]=m[p.po]||{its:[],proySet:new Set()};m[p.po].its.push(p);if(p.proyecto_nombre)m[p.po].proySet.add(p.proyecto_nombre);});
+    // Ocultar los PO donde TODOS los ítems ya están recibidos en Argentina
+    const entradas=Object.entries(m).filter(([po,{its}])=>its.some(i=>i.estado!=='Recibido ARG'));
+    const itemsVisibles=entradas.reduce((s,[po,{its}])=>s+its.length,0);
+    document.getElementById(subid).textContent=itemsVisibles+' ítems · '+entradas.length+' POs activos';
+    const tb=document.getElementById(tbid);if(!tb)return;tb.innerHTML='';
+    entradas.sort((a,b)=>a[0].localeCompare(b[0])).forEach(([po,{its,proySet}])=>{
+      const pend=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length;
+      const dd=its.filter(i=>i.estado==='Despachado').length;
+      const rr=its.filter(i=>i.estado==='Recibido ARG').length;
+      const ps=[...proySet].join(', ')||'<span style="color:#aaa">—</span>';
+      const al=its.some(i=>isAlerta(i));
+      tb.innerHTML+=`<tr style="${al?'background:rgba(252,235,235,.3)':''}">
+        <td style="font-size:11px;font-weight:500">${po}${al?' ⚠️':''}</td>
+        <td style="font-size:10px">${ps}</td>
+        <td>${its.length}</td>
+        <td style="color:${pend>0?'#ba7517':'#ccc'}">${pend||'—'}</td>
+        <td style="color:${dd>0?'#2d6da3':'#ccc'}">${dd||'—'}</td>
+        <td style="color:${rr>0?'#3b6d11':'#ccc'}">${rr||'—'}</td>
+      </tr>`;
+    });
+    if(!entradas.length) tb.innerHTML='<tr><td colspan="6" style="text-align:center;color:#aaa;padding:1rem">Sin pedidos activos</td></tr>';
+  }
+  sumTbl('dash-china-tbl','d-china-sub','China');
+  sumTbl('dash-uy-tbl','d-uy-sub','Uruguay');
+
+  setDashView(dashView);
+}
+
+function setDashView(view){
+  dashView=view;
+  ['sindesp','desp','recib'].forEach(v=>{
+    document.getElementById('dcard-'+v).classList.toggle('active',v===view);
+  });
+}
+
+// ─── DEPÓSITO ───
+function stockPill(estado_stock){
+  if(!estado_stock) return '<span style="font-size:10px;color:#aaa">—</span>';
+  const e=estado_stock.toLowerCase();
+  if(e==='ready'||e==='in stock') return `<span class="pill p-desp"><span class="dot"></span>${estado_stock}</span>`;
+  if(e==='in transit') return `<span class="pill p-trans"><span class="dot"></span>${estado_stock}</span>`;
+  return `<span class="pill p-pend"><span class="dot"></span>${estado_stock}</span>`;
+}
+
+function despachoPill(estado){
+  if(!estado) return '<span style="font-size:10px;color:#aaa">—</span>';
+  const e=estado.toLowerCase();
+  if(e==='despachado') return `<span class="pill p-desp"><span class="dot"></span>Despachado</span>`;
+  if(e==='recibido arg') return `<span class="pill p-desp"><span class="dot"></span>Recibido ARG</span>`;
+  if(e==='en tránsito'||e==='en transito') return `<span class="pill p-trans"><span class="dot"></span>En tránsito</span>`;
+  return `<span class="pill p-pend"><span class="dot"></span>${estado}</span>`;
+}
+
+function renderDep(dep){
+  const key=dep==='China'?'china':'uy';
+  const s=(document.getElementById(key+'-s')?.value||'').toLowerCase();
+  const ef=document.getElementById(key+'-fest')?.value||'';
+  const poSel=document.getElementById(key+'-fpo');
+  const proySel=document.getElementById(key+'-fproy');
+  const pf=poSel?.value||'';
+  const prf=proySel?.value||'';
+  const base=allItems.filter(i=>i.deposito===dep&&i.estado!=='Recibido ARG');
+  const pos=[...new Set(base.map(i=>i.po))];
+  const proys=[...new Set(base.filter(i=>i.proyecto_nombre).map(i=>i.proyecto_nombre))];
+  if(poSel){const prev=poSel.value;poSel.innerHTML='<option value="">Todos los POs</option>'+pos.map(p=>`<option value="${p}"${p===prev?' selected':''}>${p}</option>`).join('');}
+  if(proySel){const prev=proySel.value;proySel.innerHTML='<option value="">Todos los proyectos</option><option value="__libre__">Stock libre</option>'+proys.map(p=>`<option value="${p}"${p===prev?' selected':''}>${p}</option>`).join('');}
+  let filtered=[...base];
+  if(ef) filtered=filtered.filter(i=>i.estado===ef);
+  if(pf) filtered=filtered.filter(i=>i.po===pf);
+  if(prf==='__libre__') filtered=filtered.filter(i=>!i.proyecto_nombre);
+  else if(prf) filtered=filtered.filter(i=>i.proyecto_nombre===prf);
+  if(s) filtered=filtered.filter(i=>(i.po+i.item_no+i.material+i.sap_code+i.proyecto_nombre+(i.hik_order_no||'')).toLowerCase().includes(s));
+
+  const totalUSD=filtered.reduce((s,i)=>s+(i.amount||i.qty*i.price||0),0);
+  document.getElementById(key+'-sub').textContent=filtered.length+' ítems · '+[...new Set(filtered.map(i=>i.po))].length+' POs · USD '+fmtMoney(totalUSD);
+
+  const byPO={};filtered.forEach(i=>{byPO[i.po]=byPO[i.po]||[];byPO[i.po].push(i);});
+  const body=document.getElementById(key+'-body');body.innerHTML='';
+  if(!Object.keys(byPO).length){body.innerHTML='<div class="empty">Sin ítems que coincidan</div>';return;}
+
+  Object.entries(byPO).forEach(([po,its])=>{
+    // Despachados de VERDAD = estado interno Despachado o Recibido ARG
+    const despachados=its.filter(i=>i.estado==='Despachado'||i.estado==='Recibido ARG').length;
+    const pendientes=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length;
+    const ready=its.filter(i=>i.estado_stock&&(i.estado_stock.toLowerCase()==='ready'||i.estado_stock.toLowerCase()==='in stock')).length;
+    const transit=its.filter(i=>i.estado_stock&&i.estado_stock.toLowerCase()==='in transit').length;
+    const al=its.filter(i=>isAlerta(i)).length;
+    const total=its.reduce((s,i)=>s+(i.amount||((i.qty||0)*(i.price||0))),0);
+    // Total sin despachar = ítems cuyo estado NO es Despachado ni Recibido ARG
+    const sinDespachar=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG')
+      .reduce((s,i)=>s+(i.amount||((i.qty||0)*(i.price||0))),0);
+    const proySet=[...new Set(its.map(i=>i.proyecto_nombre).filter(Boolean))];
+    const hikOrders=[...new Set(its.map(i=>i.hik_order_no).filter(Boolean))];
+
+    let badge=al>0?`<span class="pill p-alert">${al} alerta${al>1?'s':''}</span>`:
+      (despachados===its.length&&despachados>0)?`<span class="pill p-desp">Todo despachado</span>`:
+      despachados>0?`<span class="pill p-trans">${despachados}/${its.length} despachados</span>`:
+      `<span class="pill p-pend">${pendientes} pendiente${pendientes>1?'s':''}</span>`;
+
+    const pb=proySet.map(p=>`<span class="proy-tag proy-on" style="font-size:10px">📁 ${p}</span>`).join(' ');
+    const ho=hikOrders.length?`<span style="font-size:10px;color:#888">HIK: ${hikOrders.join(', ')}</span>`:'';
+    const uid='po-'+key+'-'+po.replace(/[^a-z0-9]/gi,'_');
+    const block=document.createElement('div');block.className='po-block';
+
+    block.innerHTML=`
+      <div class="po-header" onclick="togglePO('${uid}')">
+        <span class="po-label">▾ ${po} ${ho} ${pb}</span>
+        <span class="po-meta">${badge}<span>${its.length} ítems</span><span>Total: USD ${fmtMoney(total)}</span>${sinDespachar>0.01?`<span style="color:#ba7517;font-weight:500">Sin despachar: USD ${fmtMoney(sinDespachar)}</span>`:`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`}<button class="btn-sm" onclick="event.stopPropagation();openDocs('${po}','${dep}')" title="Documentos del pedido">📎 Docs</button></span>
+      </div>
+      <div class="po-body" id="${uid}">
+        <table style="font-size:11px;table-layout:fixed;width:100%;min-width:1100px;"><thead><tr>
+          <th style="width:3%"><input type="checkbox" onchange="toggleAllItemsPO(this,${JSON.stringify(its.map(x=>x.id)).replace(/"/g,'&quot;')})"></th>
+          <th style="width:4%">Item</th>
+          <th style="width:8%">HIK Order</th>
+          <th style="width:8%">SAP Code</th>
+          <th style="width:18%">Material</th>
+          <th style="width:4%">QTY</th>
+          <th style="width:7%">P/Unit</th>
+          <th style="width:7%">Amount</th>
+          <th style="width:4%">Curr.</th>
+          <th style="width:7%">Est. Finish</th>
+          <th style="width:7%">Estado</th>
+          <th style="width:7%">Ship. Method</th>
+          <th style="width:8%">Despacho</th>
+          <th style="width:5%">Guía</th>
+          <th style="width:7%">Proyecto</th>
+          <th style="width:11%">Acción</th>
+        </tr></thead>
+        <tbody>${its.map(p=>`<tr style="${isAlerta(p)?'background:rgba(252,235,235,.3)':''}">
+          <td><input type="checkbox" class="item-check" ${itemSeleccion.has(p.id)?'checked':''} onchange="toggleItemSel('${p.id}',this)"></td>
+          <td style="font-family:monospace">${p.item_no}</td>
+          <td style="color:#888">${p.hik_order_no||'—'}</td>
+          <td>${p.sap_code||'—'}</td>
+          <td title="${p.material||''}">${(p.material||'').length>22?(p.material||'').slice(0,22)+'…':p.material||'—'}</td>
+          <td>${p.qty||0}</td>
+          <td>$${fmtMoney(p.price)}</td>
+          <td>$${fmtMoney(p.amount||(p.qty||0)*(p.price||0))}</td>
+          <td>${p.currency||'USD'}</td>
+          <td>${p.fecha_estimada||'—'}</td>
+          <td>${stockPill(p.estado_stock)}</td>
+          <td>${p.shipment_method_proveedor||'—'}</td>
+          <td title="estado real: '${p.estado||'(vacío)'}'">${despachoPill(p.estado)}</td>
+          <td>${p.guia_pdf_nombre?`<span class="pdf-badge">📄 ${p.guia_num||'PDF'}</span>`:'<span style="color:#aaa">—</span>'}</td>
+          <td>${proyTag(p)}</td>
+          <td><div style="display:flex;gap:3px;align-items:center;flex-wrap:wrap">${accionBtn(p)}${canWrite()?`<button class="btn-sm" onclick="openEditItem('${p.id}')" title="Editar">✏️</button>`:''}</div></td>
+        </tr>`).join('')}</tbody></table>
+      </div>`;
+    body.appendChild(block);
+  });
+  updateBulkBar();
+}
+
+// ─── ACCIONES MASIVAS ───
+function toggleItemSel(id,el){
+  if(el.checked) itemSeleccion.add(id); else itemSeleccion.delete(id);
+  updateBulkBar();
+}
+function toggleAllItemsPO(el,ids){
+  if(el.checked) ids.forEach(id=>itemSeleccion.add(id));
+  else ids.forEach(id=>itemSeleccion.delete(id));
+  renderAll();
+}
+function updateBulkBar(){
+  let bar=document.getElementById('bulk-bar');
+  if(!bar){
+    bar=document.createElement('div');
+    bar.id='bulk-bar';
+    bar.style.cssText='position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#1a1a1a;color:#fff;border-radius:12px;padding:10px 16px;display:none;align-items:center;gap:12px;box-shadow:0 8px 30px rgba(0,0,0,.3);z-index:900;font-size:13px;';
+    document.body.appendChild(bar);
+  }
+  const n=itemSeleccion.size;
+  if(n===0){bar.style.display='none';return;}
+  // Calcular cuántos son despachables (no despachados)
+  const sel=[...itemSeleccion].map(id=>allItems.find(i=>i.id===id)).filter(Boolean);
+  const despachables=sel.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length;
+  const recibibles=sel.filter(i=>i.estado==='Despachado').length;
+  bar.style.display='flex';
+  let botones=`<span style="font-weight:600">${n} seleccionado${n>1?'s':''}</span>`;
+  if(despachables>0) botones+=`<button onclick="bulkDespachar()" style="background:#3a7bd5;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">🚚 Despachar (${despachables})</button>`;
+  if(recibibles>0) botones+=`<button onclick="bulkRecibir()" style="background:#0f6e56;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">📍 Recibir ARG (${recibibles})</button>`;
+  botones+=`<button onclick="bulkAsignarProyecto()" style="background:#534ab7;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">📁 Proyecto</button>`;
+  botones+=`<button onclick="bulkEliminar()" style="background:#a32d2d;color:#fff;border:none;border-radius:7px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:500">🗑 Eliminar</button>`;
+  botones+=`<button onclick="itemSeleccion.clear();renderAll();" style="background:transparent;color:#aaa;border:none;cursor:pointer;font-size:18px;line-height:1">✕</button>`;
+  bar.innerHTML=botones;
+}
+
+async function bulkDespachar(){
+  const sel=[...itemSeleccion].map(id=>allItems.find(i=>i.id===id)).filter(Boolean)
+    .filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG');
+  if(!sel.length){showToast('No hay ítems pendientes de despachar en la selección','error');return;}
+  // Abrir el modal de despacho en modo masivo
+  bulkDespachoIds=sel.map(i=>i.id);
+  document.getElementById('dm-id').value='__bulk__';
+  document.getElementById('dm-info').textContent=`Despacho masivo — ${sel.length} ítems de ${[...new Set(sel.map(i=>i.po))].length} PO(s)`;
+  document.getElementById('dm-courier').value=(allCouriers[0]?.nombre)||'FedEx';
+  document.getElementById('dm-method').value='By Air';
+  document.getElementById('dm-track').value='';
+  document.getElementById('dm-guia-num').value='';
+  document.getElementById('dm-guia-ref').value='';
+  document.getElementById('dm-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('dm-llegada').value='';
+  document.getElementById('dm-notas').value='';
+  pendingPdfs=[];
+  renderPdfList();
+  openModal('despModal');
+}
+
+async function bulkEliminar(){
+  const ids=[...itemSeleccion];
+  if(!ids.length)return;
+  if(!confirm(`¿Eliminar ${ids.length} ítem${ids.length>1?'s':''} seleccionado${ids.length>1?'s':''}? Esta acción no se puede deshacer.`))return;
+  const {error}=await sb.from('items').delete().in('id',ids);
+  if(error){showToast(error.message,'error');return;}
+  itemSeleccion.clear();
+  showToast(`✓ ${ids.length} ítem${ids.length>1?'s':''} eliminado${ids.length>1?'s':''}`,'');
+  await loadItems();
+  renderAll();
+}
+
+async function bulkAsignarProyecto(){
+  const ids=[...itemSeleccion];
+  if(!ids.length)return;
+  // Construir lista de proyectos para el prompt
+  const opciones=allProyectos.map((p,i)=>`${i+1}. ${p.nombre}`).join('\n');
+  const sel=prompt(`¿A qué proyecto asignar los ${ids.length} ítems?\n\n0. Quitar proyecto (stock libre)\n${opciones}\n\nEscribí el número:`);
+  if(sel===null)return;
+  const idx=parseInt(sel);
+  let proyId=null,proyNombre=null;
+  if(idx>0&&allProyectos[idx-1]){proyId=allProyectos[idx-1].id;proyNombre=allProyectos[idx-1].nombre;}
+  const {error}=await sb.from('items').update({proyecto_id:proyId,proyecto_nombre:proyNombre}).in('id',ids);
+  if(error){showToast(error.message,'error');return;}
+  itemSeleccion.clear();
+  showToast(`✓ ${ids.length} ítems ${proyNombre?'asignados a '+proyNombre:'liberados'}`,'success');
+  await loadItems();
+  renderAll();
+}
+
+let bulkDespachoIds=[];
+
+// ─── DESPACHADOS ───
+function renderDesp(){
+  const s=(document.getElementById('desp-s')?.value||'').toLowerCase();
+  const cf=document.getElementById('desp-fc')?.value||'';
+  const df=document.getElementById('desp-fd')?.value||'';
+  let filtered=allItems.filter(i=>i.estado==='Despachado');
+  if(s) filtered=filtered.filter(i=>(i.po+i.material+i.courier+i.tracking+i.proyecto_nombre).toLowerCase().includes(s));
+  if(cf) filtered=filtered.filter(i=>i.courier===cf);
+  if(df) filtered=filtered.filter(i=>i.deposito===df);
+  const byPO={};filtered.forEach(i=>{byPO[i.po]=byPO[i.po]||[];byPO[i.po].push(i);});
+  const body=document.getElementById('desp-body');body.innerHTML='';
+  if(!Object.keys(byPO).length){body.innerHTML='<div class="empty">Sin ítems despachados pendientes de recepción</div>';return;}
+  Object.entries(byPO).forEach(([po,its])=>{
+    const dep=its[0].deposito,couriers=[...new Set(its.map(i=>i.courier).filter(Boolean))].join(', '),total=its.reduce((s,i)=>s+(i.qty||0)*(i.price||0),0);
+    const uid='dp-'+po.replace(/[^a-z0-9]/gi,'_');
+    const block=document.createElement('div');block.className='po-block';
+    block.innerHTML=`
+      <div class="po-header" onclick="togglePO('${uid}')">
+        <span class="po-label">▾ ${po} <span class="${dep==='China'?'o-china':'o-uy'}">${dep}</span></span>
+        <span class="po-meta"><span>${couriers||'—'}</span><span>${its.length} ítems</span><span>USD ${fmtMoney(total)}</span><button class="btn-sm" onclick="event.stopPropagation();openDocs('${po}','${dep}')" title="Documentos del pedido">📎 Docs</button></span>
+      </div>
+      <div class="po-body" id="${uid}">
+        <table style="table-layout:fixed;width:100%;min-width:950px;"><thead><tr>
+          <th style="width:3%"><input type="checkbox" onchange="toggleAllItemsPO(this,${JSON.stringify(its.map(x=>x.id)).replace(/"/g,'&quot;')})"></th>
+          <th style="width:7%">Item</th><th style="width:9%">SAP</th><th style="width:22%">Material</th><th style="width:5%">QTY</th>
+          <th style="width:12%">Proyecto</th><th style="width:10%">Courier</th><th style="width:12%">Tracking</th><th style="width:8%">Despacho</th><th style="width:6%">Guía</th><th style="width:6%">Acción</th>
+        </tr></thead>
+        <tbody>${its.map(p=>`<tr>
+          <td><input type="checkbox" class="item-check" ${itemSeleccion.has(p.id)?'checked':''} onchange="toggleItemSel('${p.id}',this)"></td>
+          <td style="font-family:monospace;font-size:11px">${p.item_no}</td>
+          <td style="font-size:11px">${p.sap_code||'—'}</td>
+          <td style="font-size:11px" title="${p.material||''}">${(p.material||'').length>22?(p.material||'').slice(0,22)+'…':p.material||'—'}</td>
+          <td>${p.qty||0}</td><td>${proyTag(p)}</td>
+          <td style="font-size:11px">${p.courier||'—'}</td>
+          <td style="font-size:10px;color:#888">${p.tracking||'—'}</td>
+          <td style="font-size:11px">${p.fecha_despacho||'—'}</td>
+          <td>${pdfBadge(p)}</td>
+          <td>${accionBtn(p)}</td>
+        </tr>`).join('')}</tbody></table>
+      </div>`;
+    body.appendChild(block);
+  });
+  updateBulkBar();
+}
+
+// ─── RECIBIDOS ───
+function renderRecibidos(){
+  const s=(document.getElementById('recib-s')?.value||'').toLowerCase();
+  const df=document.getElementById('recib-fd')?.value||'';
+  const pf=document.getElementById('recib-fproy')?.value||'';
+  const rsel=document.getElementById('recib-fproy');
+  const prev=rsel?.value||'';
+  if(rsel) rsel.innerHTML='<option value="">Todos los proyectos</option>'+allProyectos.map(p=>`<option value="${p.nombre}"${p.nombre===prev?' selected':''}>${p.nombre}</option>`).join('');
+  let filtered=allItems.filter(i=>i.estado==='Recibido ARG');
+  if(s) filtered=filtered.filter(i=>(i.po+i.material+i.sap_code+i.proyecto_nombre+i.quien_recibio+i.lugar_recepcion).toLowerCase().includes(s));
+  if(df) filtered=filtered.filter(i=>i.deposito===df);
+  if(pf) filtered=filtered.filter(i=>i.proyecto_nombre===pf);
+  const total=filtered.reduce((s,i)=>s+(i.qty||0)*(i.price||0),0);
+  document.getElementById('recib-sub').textContent=`${filtered.length} ítems · USD ${fmtMoney(total)}`;
+  const byPO={};filtered.forEach(i=>{byPO[i.po]=byPO[i.po]||[];byPO[i.po].push(i);});
+  const body=document.getElementById('recib-body');body.innerHTML='';
+  if(!Object.keys(byPO).length){body.innerHTML='<div class="empty">Sin ítems recibidos aún</div>';return;}
+  Object.entries(byPO).forEach(([po,its])=>{
+    const dep=its[0].deposito,tot=its.reduce((s,i)=>s+(i.qty||0)*(i.price||0),0);
+    const fechas=[...new Set(its.map(i=>i.fecha_recepcion).filter(Boolean))].join(', ');
+    const uid='recib-'+po.replace(/[^a-z0-9]/gi,'_');
+    const block=document.createElement('div');block.className='po-block';
+    block.innerHTML=`
+      <div class="po-header" onclick="togglePO('${uid}')">
+        <span class="po-label">▾ ${po} <span class="${dep==='China'?'o-china':'o-uy'}">${dep}</span> <span class="pill p-recib">Recibido ARG</span></span>
+        <span class="po-meta"><span>${fechas||'—'}</span><span>${its.length} ítems</span><span>USD ${fmtMoney(tot)}</span><button class="btn-sm" onclick="event.stopPropagation();openDocs('${po}','${dep}')" title="Documentos del pedido">📎 Docs</button></span>
+      </div>
+      <div class="po-body" id="${uid}">
+        <table style="table-layout:fixed;width:100%;min-width:950px;"><thead><tr>
+          <th style="width:7%">Item</th><th style="width:9%">SAP</th><th style="width:20%">Material</th><th style="width:5%">QTY</th>
+          <th style="width:11%">Proyecto</th><th style="width:9%">Recibido</th><th style="width:11%">Recibió</th><th style="width:13%">Destino ARG</th><th style="width:9%">Bulto</th><th style="width:6%"></th>
+        </tr></thead>
+        <tbody>${its.map(p=>`<tr>
+          <td style="font-family:monospace;font-size:11px">${p.item_no}</td>
+          <td style="font-size:11px">${p.sap_code||'—'}</td>
+          <td style="font-size:11px" title="${p.material||''}">${(p.material||'').length>22?(p.material||'').slice(0,22)+'…':p.material||'—'}</td>
+          <td>${p.qty||0}</td><td>${proyTag(p)}</td>
+          <td style="font-size:11px">${p.fecha_recepcion||'—'}</td>
+          <td style="font-size:11px">${p.quien_recibio||'—'}</td>
+          <td style="font-size:11px">${p.lugar_recepcion||'—'}</td>
+          <td style="font-size:10px;font-weight:500;color:${p.estado_bulto==='OK'?'#3b6d11':p.estado_bulto==='Faltante'?'#a32d2d':'#854f0b'}">${p.estado_bulto||'—'}</td>
+          <td><button class="btn-sm" onclick="verItem('${p.id}')">👁</button></td>
+        </tr>`).join('')}</tbody></table>
+      </div>`;
+    body.appendChild(block);
+  });
+}
+
+// ─── PROYECTOS ───
+function renderProyectoTab(){
+  const s=(document.getElementById('proy-s')?.value||'').toLowerCase();
+  const body=document.getElementById('proy-body');
+  if(!body)return;
+  let proys=allProyectos.filter(p=>p.nombre.toLowerCase().includes(s));
+  // Ítems sin proyecto (stock libre) van al final como sección aparte
+  if(!proys.length && !allProyectos.length){
+    body.innerHTML='<div class="empty">No hay proyectos. Creá el primero con "+ Nuevo proyecto".</div>';
+    return;
+  }
+  if(!proys.length){body.innerHTML='<div class="empty">Ningún proyecto coincide con la búsqueda</div>';return;}
+
+  body.innerHTML=proys.map(proy=>{
+    const its=allItems.filter(i=>i.proyecto_nombre===proy.nombre);
+    const total=its.reduce((s,i)=>s+(i.amount||(i.qty||0)*(i.price||0)),0);
+    const pend=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length;
+    const desp=its.filter(i=>i.estado==='Despachado').length;
+    const recib=its.filter(i=>i.estado==='Recibido ARG').length;
+    const sinDespMonto=its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').reduce((s,i)=>s+(i.amount||(i.qty||0)*(i.price||0)),0);
+    const uid='proy-'+proy.id.replace(/[^a-z0-9]/gi,'_');
+
+    const filas=its.length?its.map(p=>`<tr style="${isAlerta(p)?'background:rgba(252,235,235,.3)':''}">
+        <td style="font-size:11px;font-weight:500">${p.po}</td>
+        <td style="font-family:monospace;font-size:11px">${p.item_no}</td>
+        <td style="font-size:11px">${p.sap_code||'—'}</td>
+        <td style="font-size:11px" title="${p.material||''}">${(p.material||'').length>30?(p.material||'').slice(0,30)+'…':p.material||'—'}</td>
+        <td style="text-align:center">${p.qty||0}</td>
+        <td style="font-size:11px">$${fmtMoney(p.price)}</td>
+        <td style="font-size:11px">$${fmtMoney(p.amount||(p.qty||0)*(p.price||0))}</td>
+        <td><span class="${p.deposito==='China'?'o-china':'o-uy'}" style="font-size:10px">${p.deposito}</span></td>
+        <td>${despachoPill(p.estado)}</td>
+        <td><div style="display:flex;gap:3px;flex-wrap:wrap">${accionBtn(p)}${canWrite()?`<button class="btn-sm" onclick="openEditItem('${p.id}')" title="Editar">✏️</button>`:''}</div></td>
+      </tr>`).join('') : '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:1rem">Sin ítems asignados todavía</td></tr>';
+
+    return `<div class="po-block" style="margin-bottom:14px;">
+      <div class="po-header" style="background:#f4f3fb;border-left:3px solid #534ab7;">
+        <span class="po-label" onclick="togglePO('${uid}')" style="cursor:pointer;font-size:14px">
+          ▾ 📁 ${proy.nombre}
+        </span>
+        <span class="po-meta">
+          <span>${its.length} ítems</span>
+          <span>Total: USD ${fmtMoney(total)}</span>
+          ${sinDespMonto>0.01?`<span style="color:#ba7517;font-weight:500">Sin despachar: USD ${fmtMoney(sinDespMonto)}</span>`:its.length?`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`:''}
+          ${canWrite()?`<button class="btn-sm" onclick="event.stopPropagation();editarProyecto('${proy.id}')" title="Editar nombre">✏️ Editar</button>`:''}
+          ${canWrite()?`<button class="btn-sm" onclick="event.stopPropagation();exportProyectoNombre('${proy.nombre.replace(/'/g,"\\'")}')" title="Exportar">📥</button>`:''}
+          ${canWrite()?`<button class="btn-sm danger" onclick="event.stopPropagation();eliminarProyecto('${proy.id}','${proy.nombre.replace(/'/g,"\\'")}')" title="Eliminar proyecto">🗑</button>`:''}
+        </span>
+      </div>
+      <div class="po-body" id="${uid}">
+        <div style="display:flex;gap:18px;padding:8px 14px;font-size:11px;background:#fafaf8;border-bottom:0.5px solid #e5e5e5;">
+          ${pend?`<span style="color:#ba7517">⏳ ${pend} sin despachar</span>`:''}
+          ${desp?`<span style="color:#2d6da3">🚚 ${desp} despachado${desp>1?'s':''}</span>`:''}
+          ${recib?`<span style="color:#3b6d11">✅ ${recib} recibido${recib>1?'s':''} en ARG</span>`:''}
+        </div>
+        <table style="font-size:11px;table-layout:fixed;width:100%;min-width:900px;">
+          <thead><tr>
+            <th style="width:10%">PO#</th><th style="width:5%">Item</th><th style="width:9%">SAP</th>
+            <th style="width:24%">Material</th><th style="width:5%">QTY</th><th style="width:8%">P/Unit</th>
+            <th style="width:9%">Amount</th><th style="width:7%">Origen</th><th style="width:9%">Despacho</th><th style="width:11%">Acción</th>
+          </tr></thead>
+          <tbody>${filas}</tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openNuevoProyecto(){
+  const nombre=prompt('Nombre del nuevo proyecto:');
+  if(!nombre||!nombre.trim())return;
+  guardarNuevoProyecto(nombre.trim());
+}
+
+async function guardarNuevoProyecto(nombre){
+  const existe=allProyectos.find(p=>p.nombre.toLowerCase()===nombre.toLowerCase());
+  if(existe){showToast('Ya existe un proyecto con ese nombre','error');return;}
+  const {error}=await sb.from('proyectos').insert({nombre,activo:true});
+  if(error){showToast(error.message,'error');return;}
+  showToast('✓ Proyecto creado','success');
+}
+
+async function editarProyecto(id){
+  const proy=allProyectos.find(p=>p.id===id);if(!proy)return;
+  const nuevoNombre=prompt('Nuevo nombre del proyecto:',proy.nombre);
+  if(!nuevoNombre||!nuevoNombre.trim()||nuevoNombre.trim()===proy.nombre)return;
+  const nombre=nuevoNombre.trim();
+  const existe=allProyectos.find(p=>p.id!==id&&p.nombre.toLowerCase()===nombre.toLowerCase());
+  if(existe){showToast('Ya existe otro proyecto con ese nombre','error');return;}
+  // Actualizar el proyecto y todos los ítems que lo referencian por nombre
+  const {error}=await sb.from('proyectos').update({nombre}).eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  await sb.from('items').update({proyecto_nombre:nombre}).eq('proyecto_id',id);
+  showToast('✓ Proyecto renombrado','success');
+  await loadItems();
+  renderAll();
+}
+
+async function eliminarProyecto(id,nombre){
+  const its=allItems.filter(i=>i.proyecto_id===id);
+  const msg=its.length
+    ? `El proyecto "${nombre}" tiene ${its.length} ítems asignados. Si lo eliminás, esos ítems quedan como "stock libre" (no se borran). ¿Continuar?`
+    : `¿Eliminar el proyecto "${nombre}"?`;
+  if(!confirm(msg))return;
+  // Liberar ítems
+  if(its.length) await sb.from('items').update({proyecto_id:null,proyecto_nombre:null}).eq('proyecto_id',id);
+  const {error}=await sb.from('proyectos').delete().eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  showToast('Proyecto eliminado','');
+  await loadItems();
+  renderAll();
+}
+
+function exportProyectoNombre(nombre){
+  const rows=allItems.filter(i=>i.proyecto_nombre===nombre).map(p=>p.estado==='Recibido ARG'?recibToRow(p):itemToRow(p));
+  if(!rows.length){showToast('Este proyecto no tiene ítems','error');return;}
+  descargarExcel(rows, nombre.slice(0,30), `proyecto_${nombre.toLowerCase().replace(/[^a-z0-9]/gi,'_')}`);
+}
+
+// ─── BUSCADOR GLOBAL ───
+function globalSearch(q){
+  const hint=document.getElementById('search-hint');
+  const res=document.getElementById('search-results');
+  if(!q||q.length<2){hint.textContent='Escribí al menos 2 caracteres';res.innerHTML='';return;}
+  const ql=q.toLowerCase();
+  const found=allItems.filter(i=>(i.material+i.sap_code+i.po+i.proyecto_nombre).toLowerCase().includes(ql));
+  if(!found.length){hint.textContent=`Sin resultados para "${q}"`;res.innerHTML='';return;}
+  hint.textContent=`${found.length} ítem${found.length!==1?'s':''} encontrado${found.length!==1?'s':''}`;
+  function hl(t){if(!t)return'';const i=t.toLowerCase().indexOf(ql);if(i<0)return t;return t.slice(0,i)+`<span class="hl">${t.slice(i,i+q.length)}</span>`+t.slice(i+q.length);}
+  const byMat={};found.forEach(p=>{const k=p.sap_code||p.material;byMat[k]=byMat[k]||[];byMat[k].push(p);});
+  res.innerHTML='';
+  Object.entries(byMat).forEach(([key,its])=>{
+    const totalQty=its.reduce((s,i)=>s+(i.qty||0),0);
+    const libre=its.filter(i=>!i.proyecto_nombre&&i.estado!=='Recibido ARG').reduce((s,i)=>s+(i.qty||0),0);
+    const reservado=its.filter(i=>i.proyecto_nombre&&i.estado!=='Recibido ARG').reduce((s,i)=>s+(i.qty||0),0);
+    const recibQty=its.filter(i=>i.estado==='Recibido ARG').reduce((s,i)=>s+(i.qty||0),0);
+    const g=document.createElement('div');g.style.marginBottom='1.25rem';
+    g.innerHTML=`<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;flex-wrap:wrap;gap:6px;">
+      <div><div style="font-size:13px;font-weight:500">${hl(its[0].material||'')}</div><div style="font-size:11px;color:#888">SAP: ${hl(its[0].sap_code||'')}</div></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <span style="font-size:11px;color:#888">Total: <b style="color:#1a1a1a">${totalQty} uds</b></span>
+        ${libre>0?`<span class="proy-tag proy-off">${libre} libres</span>`:''}
+        ${reservado>0?`<span class="proy-tag proy-on">${reservado} reservadas</span>`:''}
+        ${recibQty>0?`<span class="pill p-recib">${recibQty} recibidas ARG</span>`:''}
+      </div>
+    </div>`;
+    its.forEach(p=>{
+      const card=document.createElement('div');card.className='result-card';
+      card.innerHTML=`
+        <div style="min-width:34px;display:flex;flex-direction:column;align-items:center;gap:4px;">
+          <span class="${p.deposito==='China'?'o-china':'o-uy'}">${p.deposito==='China'?'CN':'UY'}</span>
+        </div>
+        <div class="result-main">
+          <div class="result-meta">
+            <span>PO: <b style="color:#1a1a1a">${hl(p.po)}</b></span>
+            <span>Item: ${p.item_no}</span>
+            <span>${estPill(p)}</span>
+            <span>${proyTag(p)}</span>
+            ${p.guia_pdf_nombre?`<span>${pdfBadge(p)}</span>`:''}
+          </div>
+        </div>
+        <div class="result-right">
+          <span style="font-size:12px;font-weight:500">${p.qty||0} uds</span>
+          <span style="font-size:10px;color:#888">${p.estado==='Recibido ARG'?'Recibido: '+p.fecha_recepcion:p.estado==='Despachado'?'Desp: '+p.fecha_despacho:'Est: '+(p.fecha_estimada||'—')}</span>
+          ${accionBtn(p)}
+        </div>`;
+      g.appendChild(card);
+    });
+    res.appendChild(g);
+  });
+}
+
+// ─── USUARIOS ───
+function renderUsers(){
+  const body=document.getElementById('users-list');if(!body)return;
+  body.innerHTML='';
+  allUsers.forEach(u=>{
+    const initials=(u.nombre||'?').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase();
+    const card=document.createElement('div');card.className='user-card';
+    card.innerHTML=`
+      <div class="user-avatar">${initials}</div>
+      <div class="user-info">
+        <div class="user-name">${u.nombre} ${!u.activo?'<span style="font-size:10px;color:#aaa">(inactivo)</span>':''}</div>
+        <div class="user-email">${u.email}</div>
+      </div>
+      <span class="role-pill role-${u.rol}">${u.rol}</span>
+      ${currentUser?.id!==u.id?`<button class="btn-sm" onclick="editUser('${u.id}')">✏️ Editar</button>`:'<span style="font-size:10px;color:#aaa">tú</span>'}`;
+    body.appendChild(card);
+  });
+}
+
+function editUser(id){
+  const u=allUsers.find(x=>x.id===id);if(!u)return;
+  document.getElementById('nu-title').textContent='✏️ Editar usuario';
+  document.getElementById('nu-id').value=id;
+  document.getElementById('nu-nombre').value=u.nombre;
+  document.getElementById('nu-email').value=u.email;
+  document.getElementById('nu-pass').value='';
+  document.getElementById('nu-pass-hint').style.display='';
+  document.getElementById('nu-rol').value=u.rol;
+  document.getElementById('nu-activo').value=String(u.activo);
+  openModal('newUserModal');
+}
+
+async function saveUser(){
+  const id=document.getElementById('nu-id').value;
+  const nombre=document.getElementById('nu-nombre').value.trim();
+  const email=document.getElementById('nu-email').value.trim().toLowerCase();
+  const pass=document.getElementById('nu-pass').value;
+  const rol=document.getElementById('nu-rol').value;
+  const activo=document.getElementById('nu-activo').value==='true';
+  if(!nombre||!email){showToast('Nombre y email son obligatorios','error');return;}
+  const obj={nombre,email,rol,activo};
+  if(pass) obj.password_hash=await sha256(pass);
+  let error;
+  if(id){
+    ({error}=await sb.from('usuarios').update(obj).eq('id',id));
+  } else {
+    if(!pass){showToast('La contraseña es obligatoria para usuarios nuevos','error');return;}
+    ({error}=await sb.from('usuarios').insert({...obj,password_hash:await sha256(pass)}));
+  }
+  if(error){showToast(error.message,'error');return;}
+  closeModal('newUserModal');
+  document.getElementById('nu-id').value='';
+  document.getElementById('nu-title').textContent='👤 Nuevo usuario';
+  document.getElementById('nu-pass-hint').style.display='none';
+  await loadUsers();
+  showToast(id?'Usuario actualizado':'Usuario creado','success');
+}
+
+// ─── NUEVO ÍTEM ───
+function openNewItem(dep){
+  document.getElementById('ni-dep').value=dep||'China';
+  document.getElementById('ni-po').value='';
+  document.getElementById('ni-hik-order').value='';
+  document.getElementById('ni-item').value='';
+  document.getElementById('ni-sap').value='';
+  document.getElementById('ni-mat').value='';
+  document.getElementById('ni-qty').value='1';
+  document.getElementById('ni-price').value='0';
+  document.getElementById('ni-est').value='Pendiente';
+  document.getElementById('ni-fecha').value='';
+  openModal('newItemModal');
+}
+
+async function saveNewItem(){
+  const dep=document.getElementById('ni-dep').value;
+  const po=document.getElementById('ni-po').value.trim();
+  const item_no=document.getElementById('ni-item').value.trim();
+  if(!po||!item_no){showToast('PO# e Item No. son obligatorios','error');return;}
+
+  const duplicate=allItems.find(i=>i.po===po&&i.item_no===item_no&&i.deposito===dep);
+  if(duplicate){
+    showToast(`Ya existe el ítem ${po}-${item_no} en ${dep}. Editalo desde la tabla.`,'error');
+    return;
+  }
+
+  const proy_id=document.getElementById('ni-proy').value||null;
+  const proy=allProyectos.find(p=>p.id===proy_id);
+  const qty=parseInt(document.getElementById('ni-qty').value)||1;
+  const price=parseFloat(document.getElementById('ni-price').value)||0;
+  const obj={
+    po, item_no,
+    hik_order_no:document.getElementById('ni-hik-order').value.trim()||null,
+    sap_code:document.getElementById('ni-sap').value.trim(),
+    material:document.getElementById('ni-mat').value.trim(),
+    qty, price,
+    amount:qty*price,
+    currency:'USD',
+    deposito:dep,
+    estado:document.getElementById('ni-est').value,
+    estado_stock:'',
+    proyecto_id:proy_id||null,
+    proyecto_nombre:proy?.nombre||null,
+    fecha_estimada:document.getElementById('ni-fecha').value||null,
+    created_by:currentUser.id
+  };
+  const {error}=await sb.from('items').insert(obj);
+  if(error){showToast(error.message,'error');return;}
+  closeModal('newItemModal');
+  showToast('✓ Ítem agregado','success');
+}
+
+// ─── DESPACHO ───
+let pendingPdfs = []; // {nombre, url} de PDFs ya subidos
+
+function openDespacho(id){
+  const p=allItems.find(x=>x.id===id);if(!p)return;
+  pendingPdfs=[];
+  if(Array.isArray(p.guias_pdf)&&p.guias_pdf.length) pendingPdfs=[...p.guias_pdf];
+  else if(p.guia_pdf_nombre) pendingPdfs=[{nombre:p.guia_pdf_nombre,url:''}];
+  document.getElementById('dm-id').value=id;
+  document.getElementById('dm-info').textContent=`${p.po}-${p.item_no} — ${p.material}${p.proyecto_nombre?' · '+p.proyecto_nombre:''}`;
+  document.getElementById('dm-courier').value=p.courier||(allCouriers[0]?.nombre)||'FedEx';
+  document.getElementById('dm-method').value=p.shipment_method||'By Air';
+  document.getElementById('dm-track').value=p.tracking||'';
+  document.getElementById('dm-guia-num').value=p.guia_num||'';
+  document.getElementById('dm-guia-ref').value=p.guia_ref||'';
+  document.getElementById('dm-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('dm-llegada').value=p.fecha_estimada||'';
+  document.getElementById('dm-notas').value=p.notas||'';
+  renderPdfList();
+  openModal('despModal');
+}
+
+// Sube un archivo a Storage y devuelve {nombre, url}
+async function subirArchivo(file, carpeta){
+  const ext=file.name.split('.').pop();
+  const limpio=file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const path=`${carpeta}/${Date.now()}_${limpio}`;
+  const {error}=await sb.storage.from('documentos').upload(path, file);
+  if(error){console.error(error);return null;}
+  const {data}=sb.storage.from('documentos').getPublicUrl(path);
+  return {nombre:file.name, url:data.publicUrl, path};
+}
+
+async function onPdfSel(input){
+  const files=Array.from(input.files);
+  input.value='';
+  if(!files.length)return;
+  showToast(`Subiendo ${files.length} archivo${files.length>1?'s':''}...`,'');
+  const po=document.getElementById('dm-info').textContent.split('-')[0].trim();
+  for(const f of files){
+    const r=await subirArchivo(f, 'guias');
+    if(r) pendingPdfs.push(r);
+    else showToast(`Error subiendo ${f.name}`,'error');
+  }
+  renderPdfList();
+  showToast('✓ Archivos subidos','success');
+}
+
+function renderPdfList(){
+  const cont=document.getElementById('dm-pdf-list');
+  if(!cont)return;
+  if(!pendingPdfs.length){cont.innerHTML='';return;}
+  cont.innerHTML=pendingPdfs.map((pdf,i)=>{
+    const ext=(pdf.nombre||'').toLowerCase();
+    const icon=ext.includes('.xls')||ext.includes('.csv')?'📊':ext.match(/\.(jpg|jpeg|png)$/)?'🖼️':ext.includes('.doc')?'📝':'📄';
+    return `
+    <div style="display:flex;align-items:center;gap:8px;background:#eaf3de;border-radius:6px;padding:6px 10px;margin-bottom:4px;">
+      <span>${icon}</span>
+      <span style="flex:1;font-size:11px;color:#3b6d11;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${pdf.nombre}</span>
+      ${pdf.url?`<a href="${pdf.url}" target="_blank" class="btn-sm" style="text-decoration:none;padding:1px 6px">⬇</a>`:''}
+      <button class="btn-sm danger" style="padding:1px 6px" onclick="removePdf(${i})">✕</button>
+    </div>`;}).join('');
+}
+
+function removePdf(idx){
+  pendingPdfs.splice(idx,1);
+  renderPdfList();
+}
+
+async function saveDespacho(){
+  const id=document.getElementById('dm-id').value;
+  const obj={
+    estado:'Despachado',
+    courier:document.getElementById('dm-courier').value,
+    shipment_method:document.getElementById('dm-method').value,
+    tracking:document.getElementById('dm-track').value,
+    guia_num:document.getElementById('dm-guia-num').value,
+    guia_ref:document.getElementById('dm-guia-ref').value,
+    fecha_despacho:document.getElementById('dm-fecha').value||null,
+    fecha_estimada:parseFecha(document.getElementById('dm-llegada').value)||null,
+    notas:document.getElementById('dm-notas').value,
+    guias_pdf:pendingPdfs,
+    guia_pdf_nombre:pendingPdfs.length?pendingPdfs[0].nombre:null
+  };
+  if(id==='__bulk__'){
+    // Despacho masivo: aplicar a todos los seleccionados
+    if(!bulkDespachoIds.length){closeModal('despModal');return;}
+    const {error}=await sb.from('items').update(obj).in('id',bulkDespachoIds);
+    if(error){showToast(error.message,'error');return;}
+    const n=bulkDespachoIds.length;
+    bulkDespachoIds=[];
+    itemSeleccion.clear();
+    closeModal('despModal');
+    showToast(`✓ ${n} ítems despachados`,'success');
+    await loadItems(); renderAll();
+    return;
+  }
+  const {error}=await sb.from('items').update(obj).eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  closeModal('despModal');
+  showToast('✓ Despacho registrado','success');
+}
+
+// ─── RECEPCIÓN ───
+function openRecib(id){
+  const p=allItems.find(x=>x.id===id);if(!p)return;
+  document.getElementById('rm-id').value=id;
+  document.getElementById('rm-info').textContent=`${p.po}-${p.item_no} — ${p.material} (${p.qty} uds · ${p.deposito})${p.proyecto_nombre?' · '+p.proyecto_nombre:''}`;
+  document.getElementById('rm-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('rm-quien').value=currentUser?.nombre||'';
+  document.getElementById('rm-lugar').value='';
+  document.getElementById('rm-bulto').value='OK';
+  document.getElementById('rm-notas').value='';
+  openModal('recibModal');
+}
+
+let bulkRecibIds=[];
+function bulkRecibir(){
+  const sel=[...itemSeleccion].map(id=>allItems.find(i=>i.id===id)).filter(Boolean)
+    .filter(i=>i.estado==='Despachado');
+  if(!sel.length){showToast('Seleccioná ítems que estén despachados para recibirlos','error');return;}
+  bulkRecibIds=sel.map(i=>i.id);
+  document.getElementById('rm-id').value='__bulk__';
+  document.getElementById('rm-info').textContent=`Recepción masiva — ${sel.length} ítems de ${[...new Set(sel.map(i=>i.po))].length} PO(s)`;
+  document.getElementById('rm-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('rm-quien').value=currentUser?.nombre||'';
+  document.getElementById('rm-lugar').value='';
+  document.getElementById('rm-bulto').value='OK';
+  document.getElementById('rm-notas').value='';
+  openModal('recibModal');
+}
+
+async function saveRecepcion(){
+  const id=document.getElementById('rm-id').value;
+  const obj={estado:'Recibido ARG',fecha_recepcion:document.getElementById('rm-fecha').value||null,quien_recibio:document.getElementById('rm-quien').value,lugar_recepcion:document.getElementById('rm-lugar').value,estado_bulto:document.getElementById('rm-bulto').value,notas_recepcion:document.getElementById('rm-notas').value};
+  if(id==='__bulk__'){
+    if(!bulkRecibIds.length){closeModal('recibModal');return;}
+    const {error}=await sb.from('items').update(obj).in('id',bulkRecibIds);
+    if(error){showToast(error.message,'error');return;}
+    const n=bulkRecibIds.length;
+    bulkRecibIds=[]; itemSeleccion.clear();
+    closeModal('recibModal');
+    showToast(`✅ ${n} ítems recibidos en Argentina`,'success');
+    await loadItems(); renderAll();
+    return;
+  }
+  const {error}=await sb.from('items').update(obj).eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  closeModal('recibModal');
+  showToast('✅ Recepción confirmada','success');
+}
+
+// ─── VER ÍTEM ───
+function verItem(id){
+  const p=allItems.find(x=>x.id===id);if(!p)return;
+  const isRecib=p.estado==='Recibido ARG';
+  document.getElementById('ver-title').textContent=isRecib?'📍 Detalle — Recibido ARG':'🚚 Detalle del despacho';
+  document.getElementById('ver-content').innerHTML=`
+    <div style="background:#fafaf8;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+      <div style="font-size:11px;color:#888">${p.po}-${p.item_no} · <span class="${p.deposito==='China'?'o-china':'o-uy'}">${p.deposito}</span> ${p.proyecto_nombre?`· <span class="proy-tag proy-on">📁 ${p.proyecto_nombre}</span>`:''}</div>
+      <div style="font-size:13px;font-weight:500">${p.material||'—'}</div>
+      <div style="font-size:11px;color:#888">QTY: ${p.qty||0} · SAP: ${p.sap_code||'—'}</div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px;">
+      <div><div style="font-size:10px;color:#aaa;text-transform:uppercase">Courier</div><div style="font-size:12px;font-weight:500">${p.courier||'—'}</div></div>
+      <div><div style="font-size:10px;color:#aaa;text-transform:uppercase">Método</div><div style="font-size:12px;font-weight:500">${p.shipment_method||'—'}</div></div>
+      <div><div style="font-size:10px;color:#aaa;text-transform:uppercase">Tracking</div><div style="font-size:11px;font-family:monospace">${p.tracking||'—'}</div></div>
+      <div><div style="font-size:10px;color:#aaa;text-transform:uppercase">Fecha despacho</div><div style="font-size:12px;font-weight:500">${p.fecha_despacho||'—'}</div></div>
+      ${isRecib?`
+      <div><div style="font-size:10px;color:#aaa;text-transform:uppercase">Fecha recepción</div><div style="font-size:12px;font-weight:500">${p.fecha_recepcion||'—'}</div></div>
+      <div><div style="font-size:10px;color:#aaa;text-transform:uppercase">Recibido por</div><div style="font-size:12px;font-weight:500">${p.quien_recibio||'—'}</div></div>
+      <div><div style="font-size:10px;color:#aaa;text-transform:uppercase">Destino ARG</div><div style="font-size:12px;font-weight:500">${p.lugar_recepcion||'—'}</div></div>
+      <div><div style="font-size:10px;color:#aaa;text-transform:uppercase">Estado bulto</div><div style="font-size:12px;font-weight:500;color:${p.estado_bulto==='OK'?'#3b6d11':p.estado_bulto==='Faltante'?'#a32d2d':'#854f0b'}">${p.estado_bulto||'—'}</div></div>
+      `:''}
+    </div>
+    ${(Array.isArray(p.guias_pdf)&&p.guias_pdf.length)?`<div style="margin-bottom:10px;">
+      <div style="font-size:10px;color:#aaa;text-transform:uppercase;margin-bottom:4px">Guías PDF (${p.guias_pdf.length})</div>
+      ${p.guias_pdf.map(pdf=>`<div style="background:#eaf3de;border-radius:6px;padding:6px 10px;display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+        <span>📄</span><span style="font-size:12px;font-weight:500;color:#3b6d11;flex:1">${pdf.nombre}</span>
+        ${pdf.url?`<a href="${pdf.url}" target="_blank" class="btn-sm" style="text-decoration:none">⬇ Ver</a>`:'<span style="font-size:10px;color:#aaa">sin archivo</span>'}
+      </div>`).join('')}
+    </div>`:(p.guia_pdf_nombre?`<div style="background:#eaf3de;border-radius:8px;padding:8px 12px;display:flex;align-items:center;gap:8px;margin-bottom:10px;">
+      <span>📄</span><span style="font-size:12px;font-weight:500;color:#3b6d11;flex:1">${p.guia_pdf_nombre}</span>
+    </div>`:'')}
+    ${p.notas||p.notas_recepcion?`<div style="font-size:11px;color:#888;padding-top:8px;border-top:0.5px solid #e5e5e5">${p.notas?'Notas envío: '+p.notas:''}${p.notas&&p.notas_recepcion?'<br>':''}${p.notas_recepcion?'Notas recepción: '+p.notas_recepcion:''}</div>`:''}`;
+  openModal('verModal');
+}
+
+// ─── PROYECTOS ───
+async function saveProyecto(){
+  const nombre=document.getElementById('np-nombre').value.trim();
+  const descripcion=document.getElementById('np-desc').value.trim();
+  if(!nombre){showToast('El nombre es obligatorio','error');return;}
+  const {error}=await sb.from('proyectos').insert({nombre,descripcion});
+  if(error){showToast(error.message,'error');return;}
+  closeModal('newProyModal');
+  document.getElementById('np-nombre').value='';
+  document.getElementById('np-desc').value='';
+  showToast('Proyecto creado','success');
+}
+
+function updateProySelects(){
+  const opts='<option value="">Sin proyecto — stock libre</option>'+allProyectos.map(p=>`<option value="${p.id}">${p.nombre}</option>`).join('');
+  ['ni-proy','imp-proy'].forEach(id=>{const el=document.getElementById(id);if(el)el.innerHTML=opts;});
+}
+
+// ─── IMPORTAR ───
+// ─── PARSEAR MONTO (formato argentino $38.000,00 o yanqui $38,000.00) ───
+function parseMonto(raw){
+  if(!raw) return 0;
+  // Quitar todo lo que no sea dígito, punto, coma o signo menos (saca US$, USD, espacios, etc.)
+  let s=String(raw).trim().replace(/[^\d.,-]/g,'');
+  if(!s||s==='-') return 0;
+  const neg=s.startsWith('-');
+  s=s.replace(/-/g,'');
+  const tienePunto=s.includes('.');
+  const tieneComa=s.includes(',');
+  if(tienePunto&&tieneComa){
+    // Si la coma está después del último punto → formato AR (1.234,56)
+    if(s.lastIndexOf(',')>s.lastIndexOf('.')){
+      s=s.replace(/\./g,'').replace(',','.');
+    } else {
+      // formato US (1,234.56)
+      s=s.replace(/,/g,'');
+    }
+  } else if(tieneComa){
+    // Solo coma: es decimal AR (380,00) o miles US (1,234)
+    const partes=s.split(',');
+    if(partes.length===2 && partes[1].length<=2){
+      // decimal: 380,00
+      s=s.replace(',','.');
+    } else {
+      // miles: 1,234,567
+      s=s.replace(/,/g,'');
+    }
+  } else if(tienePunto){
+    // Solo punto: decimal (380.00) o miles AR (38.000)
+    const partes=s.split('.');
+    if(partes.length===2 && partes[1].length<=2){
+      // decimal: 380.00 → dejar
+    } else {
+      // miles: 38.000 → quitar puntos
+      s=s.replace(/\./g,'');
+    }
+  }
+  const r=parseFloat(s)||0;
+  return neg?-r:r;
+}
+
+// ─── CONVERTIR FECHA A YYYY-MM-DD ───
+function parseFecha(raw){
+  if(!raw) return null;
+  const s=raw.trim();
+  if(!s||s.toLowerCase()==='ready'||s.toLowerCase()==='-'||s===''||s==='0') return null;
+
+  // Ya está en YYYY-MM-DD
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+  // DD/MM/YYYY o D/M/YYYY (formato Uruguay: 18/5/2026)
+  const m1=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+  if(m1) return `${m1[3]}-${m1[2].padStart(2,'0')}-${m1[1].padStart(2,'0')}`;
+
+  // DD-MM-YYYY
+  const m2=s.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if(m2) return `${m2[3]}-${m2[2].padStart(2,'0')}-${m2[1].padStart(2,'0')}`;
+
+  // MM/DD/YYYY
+  const m3=s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if(m3){
+    const yr=m3[3].length===2?'20'+m3[3]:m3[3];
+    return `${yr}-${m3[1].padStart(2,'0')}-${m3[2].padStart(2,'0')}`;
+  }
+
+  // Si no puede parsear, devuelve null para evitar el error de Supabase
+  console.warn('Fecha no reconocida, ignorada:',s);
+  return null;
+}
+
+async function doImport(){
+  const raw=document.getElementById('imp-txt').value.trim();
+  const dep=document.getElementById('imp-dep').value;
+  const proyId=document.getElementById('imp-proy').value||null;
+  const proy=allProyectos.find(p=>p.id===proyId);
+  if(!raw){closeModal('importModal');return;}
+  const lines=raw.split('\n').filter(l=>l.trim());
+  if(!lines.length){showToast('Sin datos válidos','error');return;}
+
+  // Detectar si pegó con comas pero hay valores de dinero con coma decimal → conflicto
+  const usaTab=lines.some(l=>l.includes('\t'));
+  if(!usaTab && raw.match(/\$[\d.]+,\d{2}/)){
+    const errDiv=document.getElementById('imp-errors');
+    document.getElementById('imp-errors-list').innerHTML='Pegaste datos separados por COMAS pero los precios tienen comas decimales (ej. $380,00). Esto rompe las columnas.<br><br>SOLUCIÓN: Copiá directo desde Excel/Google Sheets (se separan por TAB automáticamente).';
+    errDiv.style.display='block';
+    return;
+  }
+  const sep=usaTab?'\t':',';
+
+  // ── Mapeo de columnas por nombre de encabezado ──
+  const first=lines[0].toLowerCase();
+  const hasH=first.includes('po')||first.includes('material')||first.includes('hik')||first.includes('item')||first.includes('sap');
+
+  // Normaliza nombre de header → clave interna
+  function detectarColumna(h){
+    const t=h.toLowerCase().replace(/[^a-z0-9]/g,'');
+    if(t.includes('po')&&!t.includes('hikorder')&&t.length<=6) return 'po';
+    if(t.includes('po')&&!t.includes('order')&&!t.includes('sap')&&!t.includes('item')) return 'po';
+    if(t.includes('order')) return 'hik_order_no';
+    if(t.includes('itemno')||t==='item'||(t.includes('item')&&!t.includes('material'))) return 'item_no';
+    if(t.includes('sap')||t.includes('code')) return 'sap_code';
+    if(t.includes('material')||t.includes('description')||t.includes('descrip')) return 'material';
+    if(t==='qty'||t.includes('quantity')||t.includes('cantidad')) return 'qty';
+    if(t.includes('price')||t.includes('unit')||t.includes('precio')) return 'price';
+    if(t.includes('amount')||t.includes('total')||t.includes('monto')) return 'amount';
+    if(t.includes('currency')||t.includes('moneda')) return 'currency';
+    if(t.includes('finish')||t.includes('estimated')||t.includes('date')||t.includes('fecha')||t.includes('llegada')) return 'fecha';
+    if(t.includes('shipment')||t.includes('method')||t.includes('envio')) return 'shipment';
+    if(t.includes('estadodespacho')||t.includes('despacho')) return 'estado_despacho';
+    if(t.includes('estado')||t.includes('status')||t.includes('stock')) return 'estado_stock';
+    if(t.includes('guia')||t.includes('guide')||t.includes('tracking')) return 'guia';
+    return null;
+  }
+
+  // Construir índice de columnas
+  let colMap={};
+  let data;
+  if(hasH){
+    const headers=lines[0].split(sep).map(x=>x.trim().replace(/^"|"$/g,''));
+    headers.forEach((h,idx)=>{const key=detectarColumna(h);if(key&&!(key in colMap))colMap[key]=idx;});
+    data=lines.slice(1);
+  } else {
+    // Sin encabezado: usar orden estándar de la plantilla
+    colMap={po:0,hik_order_no:1,item_no:2,sap_code:3,material:4,qty:5,price:6,amount:7,currency:8,fecha:9,estado_stock:10,shipment:11,estado_despacho:12,guia:13};
+    data=lines;
+  }
+
+  // Validar que estén las columnas mínimas
+  if(!('po' in colMap)||!('item_no' in colMap)){
+    const errDiv=document.getElementById('imp-errors');
+    document.getElementById('imp-errors-list').innerHTML='No pude identificar las columnas PO# y/o HIK Item No. en el encabezado.<br><br>Asegurate de copiar incluyendo la fila de títulos (PO#, HIK Item No., etc).';
+    errDiv.style.display='block';
+    return;
+  }
+  if(!data.length){showToast('Sin datos válidos','error');return;}
+
+  const g=(c,key)=>(key in colMap && c[colMap[key]]!=null)?c[colMap[key]].trim():'';
+
+  let added=0, updated=0, errors=[];
+
+  for(const line of data){
+    const c=line.split(sep).map(x=>x.replace(/^"|"$/g,''));
+    const po=g(c,'po');
+    const item_no=g(c,'item_no');
+    if(!po||!item_no) continue;
+
+    const hik_order_no=g(c,'hik_order_no')||null;
+    const sap_code=g(c,'sap_code');
+    const material=g(c,'material');
+    const qty=parseInt(g(c,'qty'))||1;
+    const price=parseMonto(g(c,'price'));
+    const amount=parseMonto(g(c,'amount'))||qty*price;
+    const currency=g(c,'currency')||'USD';
+    const fecha_estimada=parseFecha(g(c,'fecha'));
+    const estado_stock=g(c,'estado_stock');
+    let shipment_method_proveedor=g(c,'shipment');
+    // Si lo que cayó en shipment es en realidad un estado, no lo guardamos ahí
+    const estadosNoSonMetodo=['despachado','pendiente','en tránsito','en transito','recibido arg','en camino','in stock','in transit','ready'];
+    if(estadosNoSonMetodo.includes((shipment_method_proveedor||'').toLowerCase().trim())) shipment_method_proveedor='';
+    const estado_despacho=g(c,'estado_despacho');
+    const guia_num=g(c,'guia');
+
+    // Qué columnas trajo realmente este import (para no pisar lo que no viene)
+    const tiene=(key)=>key in colMap;
+
+    const existing=allItems.find(i=>i.po===po&&i.item_no===item_no&&i.deposito===dep);
+
+    if(existing){
+      // ── ACTUALIZAR: solo los campos que vienen en el import ──
+      const upd={};
+      if(tiene('hik_order_no')) upd.hik_order_no=hik_order_no;
+      if(tiene('sap_code')) upd.sap_code=sap_code;
+      if(tiene('material')) upd.material=material;
+      if(tiene('qty')) upd.qty=qty;
+      if(tiene('price')){ upd.price=price; }
+      if(tiene('amount')||tiene('price')) upd.amount=amount;
+      if(tiene('currency')) upd.currency=currency;
+      if(tiene('fecha')) upd.fecha_estimada=fecha_estimada;
+      if(tiene('estado_stock')) upd.estado_stock=estado_stock;
+      if(tiene('shipment')) upd.shipment_method_proveedor=shipment_method_proveedor;
+      if(tiene('estado_despacho')) upd.estado_despacho=estado_despacho;
+      if(tiene('guia')) upd.guia_num=guia_num||null;
+      // Solo recalcular el estado interno si el import trae info de despacho/estado
+      if(tiene('estado_despacho')||tiene('guia')){
+        const ed=estado_despacho.toLowerCase();
+        if(ed.includes('despach')||ed.includes('camino')||guia_num) upd.estado='Despachado';
+        else if(estado_stock.toLowerCase()==='in transit') upd.estado='En tránsito';
+        // si no hay info de despacho explícita, NO tocar el estado existente
+      }
+      // Solo cambiar proyecto si el usuario eligió uno en el import
+      if(proyId){ upd.proyecto_id=proyId; upd.proyecto_nombre=proy?.nombre||null; }
+
+      if(Object.keys(upd).length===0){ updated++; continue; }
+      const {error}=await sb.from('items').update(upd).eq('id',existing.id);
+      if(error) errors.push(`${po}-${item_no}: ${error.message}`);
+      else updated++;
+    } else {
+      // ── NUEVO: armar el objeto completo ──
+      let estado='Pendiente';
+      const ed=estado_despacho.toLowerCase();
+      if(ed.includes('despach')||ed.includes('camino')||guia_num) estado='Despachado';
+      else if(estado_stock.toLowerCase()==='in transit') estado='En tránsito';
+      const obj={po,hik_order_no,item_no,sap_code,material,qty,price,amount,currency,deposito:dep,estado,estado_stock,shipment_method_proveedor,estado_despacho,guia_num:guia_num||null,fecha_estimada,proyecto_id:proyId,proyecto_nombre:proy?.nombre||null};
+      const {error}=await sb.from('items').insert({...obj,created_by:currentUser.id});
+      if(error) errors.push(`${po}-${item_no}: ${error.message}`);
+      else added++;
+    }
+  }
+
+  document.getElementById('imp-errors').style.display='none';
+
+  if(errors.length){
+    const errDiv=document.getElementById('imp-errors');
+    document.getElementById('imp-errors-list').innerHTML=errors.map(e=>`• ${e}`).join('<br>');
+    errDiv.style.display='block';
+    errDiv.scrollIntoView({behavior:'smooth',block:'nearest'});
+    if(added>0||updated>0) showToast(`${added} nuevos · ${updated} actualizados (con ${errors.length} errores)`,'');
+  } else {
+    closeModal('importModal');
+    document.getElementById('imp-txt').value='';
+    document.getElementById('imp-fn').textContent='O subí directamente el archivo CSV';
+    showToast(`✓ ${added} nuevos · ${updated} actualizados`,'success');
+  }
+
+  await loadItems();
+  renderAll();
+}
+
+function downloadTemplate(){
+  const dep=document.getElementById('imp-dep')?.value||'China';
+  const header='PO#\tHIK Order No.\tHIK Item No.\tHIK SAP Code\tMaterial Description\tQTY\tPrice/Unit\tAmount\tCurrency\tEstimated Finish Date\tEstado\tShipment Method\tEstado despacho\tGuia';
+
+  let rows=[];
+  if(dep==='China'){
+    rows=[
+      'C2603000526\t3000619185\t10\t305302400\tDS-KM9503(海外标配)\t1\t$401,00\t$401,00\tUSD\tready\tready\tBY Air\t\t',
+      'C2603000526\t3000619185\t20\t305303454\tDS-KH6320-LE1(B)(海外标配)\t40\t$46,00\t$1.840,00\tUSD\tready\tready\tBY Air\t\t',
+      'C2603000502\t3000619503\t10\t307900605\tAE-DI2032-G40(B)(拉美标配)\t20\t$190,40\t$3.808,00\tUSD\t2026-08-01\tIn Stock\tBY Sea\t\t',
+    ];
+  } else {
+    rows=[
+      'UY2603000521\t2048554380\t20\t305302789\tDS-KD9403-E6(O-STD)\t8\t$351,00\t$2.808,00\tUSD\t22/4/2026\tIn Stock\tBY Air\tDespachado\t',
+      'HIK2026032159\t2048055756\t280\t302920730\tDS-K1T342MFWX-E1(O-STD)\t10\t$146,32\t$1.463,20\tUSD\t5/6/2026\tIn Transit\t\t\t',
+      'UY2605000521\t2049175919\t10\t327400007\tDS-QAZ0206G1-S(O-STD)\t32\t$18,00\t$576,00\tUSD\t19/5/2026\tIn Stock\tBY Air\tDespachado\t',
+    ];
+  }
+
+  const content=header+'\n'+rows.join('\n');
+  const blob=new Blob(['\ufeff'+content],{type:'text/csv;charset=utf-8;'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download=`plantilla_${dep.toLowerCase()}_hik.csv`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ─── LISTAS CONFIGURABLES (localStorage) ───
+let allCouriers = JSON.parse(localStorage.getItem('hik_couriers')||'[]');
+if(!allCouriers.length) allCouriers=[
+  {nombre:'FedEx',tipo:'Aéreo',notas:''},
+  {nombre:'DHL',tipo:'Aéreo',notas:''},
+  {nombre:'UPS',tipo:'Aéreo',notas:''},
+  {nombre:'Maersk',tipo:'Marítimo',notas:''}
+];
+
+let estadosStock = JSON.parse(localStorage.getItem('hik_estados_stock')||'[]');
+if(!estadosStock.length) estadosStock=[
+  {nombre:'ready',color:'green'},
+  {nombre:'In Stock',color:'green'},
+  {nombre:'In Transit',color:'blue'},
+  {nombre:'Problema',color:'red'},
+];
+
+let estadosDespacho = JSON.parse(localStorage.getItem('hik_estados_despacho')||'[]');
+if(!estadosDespacho.length) estadosDespacho=[
+  {nombre:'Pendiente',color:'orange'},
+  {nombre:'En tránsito',color:'blue'},
+  {nombre:'Despachado',color:'green'},
+  {nombre:'Recibido ARG',color:'green'},
+  {nombre:'Problema',color:'red'},
+];
+
+function saveList(key,arr){ localStorage.setItem(key, JSON.stringify(arr)); }
+
+const COLOR_MAP={green:'#3b6d11',blue:'#185fa5',orange:'#854f0b',red:'#a32d2d',gray:'#666'};
+const BG_MAP={green:'#eaf3de',blue:'#e6f1fb',orange:'#faeeda',red:'#fcebeb',gray:'#f0f0ee'};
+
+function colorPill(nombre, color){
+  const c=COLOR_MAP[color]||'#666', bg=BG_MAP[color]||'#f0f0ee';
+  return `<span style="font-size:10px;padding:2px 8px;border-radius:20px;font-weight:500;color:${c};background:${bg}">${nombre}</span>`;
+}
+
+// ─── COURIERS ───
+function saveCourierList(){ saveList('hik_couriers', allCouriers); }
+
+function openCouriers(){ renderCouriersList(); openModal('couriersModal'); }
+
+function renderCouriersList(){
+  const body=document.getElementById('couriers-list');
+  if(!allCouriers.length){body.innerHTML='<div style="font-size:12px;color:#aaa;padding:8px 0">Sin proveedores cargados</div>';return;}
+  body.innerHTML=allCouriers.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:0.5px solid #e5e5e5;">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:500">${c.nombre}</div>
+        <div style="font-size:11px;color:#888">${c.tipo}${c.notas?' · '+c.notas:''}</div>
+      </div>
+      <button class="btn-sm" onclick="editCourier(${i})">✏️ Editar</button>
+      <button class="btn-sm danger" onclick="deleteCourier(${i})">🗑</button>
+    </div>`).join('');
+  renderAdminCouriersPreview();
+}
+
+function editCourier(idx){
+  const c=allCouriers[idx];
+  document.getElementById('nc-edit-idx').value=idx;
+  document.getElementById('nc-nombre').value=c.nombre;
+  document.getElementById('nc-tipo').value=c.tipo;
+  document.getElementById('nc-notas').value=c.notas||'';
+  document.getElementById('nc-form-title').textContent='Editar proveedor';
+  document.getElementById('nc-save-btn').textContent='✓ Guardar cambios';
+  document.getElementById('nc-cancel-btn').style.display='';
+}
+
+function cancelEditCourier(){
+  document.getElementById('nc-edit-idx').value='';
+  document.getElementById('nc-nombre').value='';
+  document.getElementById('nc-notas').value='';
+  document.getElementById('nc-form-title').textContent='Agregar proveedor';
+  document.getElementById('nc-save-btn').textContent='+ Agregar proveedor';
+  document.getElementById('nc-cancel-btn').style.display='none';
+}
+
+function saveCourier(){
+  const nombre=document.getElementById('nc-nombre').value.trim();
+  if(!nombre){showToast('El nombre es obligatorio','error');return;}
+  const idx=document.getElementById('nc-edit-idx').value;
+  const obj={nombre,tipo:document.getElementById('nc-tipo').value,notas:document.getElementById('nc-notas').value.trim()};
+  if(idx!=='') allCouriers[parseInt(idx)]=obj;
+  else allCouriers.push(obj);
+  saveCourierList();
+  cancelEditCourier();
+  renderCouriersList();
+  updateCourierSelects();
+  showToast('✓ Proveedor guardado','success');
+}
+
+function deleteCourier(idx){
+  if(!confirm('¿Eliminar este proveedor?'))return;
+  allCouriers.splice(idx,1);
+  saveCourierList();
+  renderCouriersList();
+  updateCourierSelects();
+}
+
+function renderAdminCouriersPreview(){
+  const body=document.getElementById('admin-couriers-preview');if(!body)return;
+  if(!allCouriers.length){body.innerHTML='<div style="font-size:11px;color:#aaa">Sin proveedores</div>';return;}
+  body.innerHTML=allCouriers.map((c,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:6px 0;border-bottom:0.5px solid #f0f0ee;">
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.nombre}</div>
+        <div style="font-size:10px;color:#888">${c.tipo}</div>
+      </div>
+      <button class="btn-sm" style="padding:2px 6px" onclick="editCourierInline(${i})" title="Editar">✏️</button>
+      <button class="btn-sm danger" style="padding:2px 6px" onclick="deleteCourierInline(${i})" title="Eliminar">🗑</button>
+    </div>`).join('');
+}
+
+function addCourierInline(){
+  const nombre=prompt('Nombre del proveedor (ej. FedEx, Aeropost):');
+  if(!nombre||!nombre.trim())return;
+  const tipo=prompt('Tipo (Aéreo / Marítimo / Terrestre):','Aéreo')||'Aéreo';
+  allCouriers.push({nombre:nombre.trim(),tipo:tipo.trim(),notas:''});
+  saveCourierList();renderAdminCouriersPreview();updateCourierSelects();
+  showToast('✓ Proveedor agregado','success');
+}
+function editCourierInline(idx){
+  const c=allCouriers[idx];
+  const nombre=prompt('Nombre del proveedor:',c.nombre);
+  if(!nombre||!nombre.trim())return;
+  const tipo=prompt('Tipo (Aéreo / Marítimo / Terrestre):',c.tipo)||c.tipo;
+  allCouriers[idx]={nombre:nombre.trim(),tipo:tipo.trim(),notas:c.notas||''};
+  saveCourierList();renderAdminCouriersPreview();updateCourierSelects();
+  showToast('✓ Proveedor actualizado','success');
+}
+function deleteCourierInline(idx){
+  if(!confirm(`¿Eliminar el proveedor "${allCouriers[idx].nombre}"?`))return;
+  allCouriers.splice(idx,1);
+  saveCourierList();renderAdminCouriersPreview();updateCourierSelects();
+}
+
+function addEstadoInline(type){
+  const nombre=prompt(`Nombre del nuevo estado de ${type==='stock'?'stock':'despacho'}:`);
+  if(!nombre||!nombre.trim())return;
+  const color=prompt('Color (green / blue / orange / red / gray):','green')||'green';
+  const list=type==='stock'?estadosStock:estadosDespacho;
+  list.push({nombre:nombre.trim(),color:color.trim()});
+  saveList(type==='stock'?'hik_estados_stock':'hik_estados_despacho',list);
+  renderAdminStockDespachoPreview();updateEstadoSelects();
+  showToast('✓ Estado agregado','success');
+}
+function editEstadoInline(type,idx){
+  const list=type==='stock'?estadosStock:estadosDespacho;
+  const s=list[idx];
+  const nombre=prompt('Nombre del estado:',s.nombre);
+  if(!nombre||!nombre.trim())return;
+  const color=prompt('Color (green / blue / orange / red / gray):',s.color)||s.color;
+  list[idx]={nombre:nombre.trim(),color:color.trim()};
+  saveList(type==='stock'?'hik_estados_stock':'hik_estados_despacho',list);
+  renderAdminStockDespachoPreview();updateEstadoSelects();
+  showToast('✓ Estado actualizado','success');
+}
+function deleteEstadoInline(type,idx){
+  const list=type==='stock'?estadosStock:estadosDespacho;
+  if(!confirm(`¿Eliminar el estado "${list[idx].nombre}"?`))return;
+  list.splice(idx,1);
+  saveList(type==='stock'?'hik_estados_stock':'hik_estados_despacho',list);
+  renderAdminStockDespachoPreview();updateEstadoSelects();
+}
+
+function updateCourierSelects(){
+  const opts=allCouriers.map(c=>`<option value="${c.nombre}">${c.nombre} (${c.tipo})</option>`).join('');
+  const sel=document.getElementById('dm-courier');
+  if(sel) sel.innerHTML=opts;
+  const fsel=document.getElementById('desp-fc');
+  if(fsel) fsel.innerHTML='<option value="">Todos los courier</option>'+allCouriers.map(c=>`<option value="${c.nombre}">${c.nombre}</option>`).join('');
+}
+
+// ─── ESTADOS CONFIGURABLES ───
+function openAdminList(type){
+  document.getElementById('al-type').value=type;
+  document.getElementById('al-title').textContent=type==='stock'?'📊 Estados de stock':'🚚 Estados de despacho';
+  renderAdminList(type);
+  cancelEditAdminList();
+  openModal('adminListModal');
+}
+
+function renderAdminList(type){
+  const list=type==='stock'?estadosStock:estadosDespacho;
+  const body=document.getElementById('al-list');
+  if(!list.length){body.innerHTML='<div style="font-size:12px;color:#aaa;padding:8px 0">Sin estados cargados</div>';return;}
+  body.innerHTML=list.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:0.5px solid #e5e5e5;">
+      <div style="flex:1">${colorPill(s.nombre,s.color)}</div>
+      <button class="btn-sm" onclick="editAdminListItem(${i})">✏️ Editar</button>
+      <button class="btn-sm danger" onclick="deleteAdminListItem(${i})">🗑</button>
+    </div>`).join('');
+  renderAdminStockDespachoPreview();
+}
+
+function editAdminListItem(idx){
+  const type=document.getElementById('al-type').value;
+  const list=type==='stock'?estadosStock:estadosDespacho;
+  const s=list[idx];
+  document.getElementById('al-edit-idx').value=idx;
+  document.getElementById('al-nombre').value=s.nombre;
+  document.getElementById('al-color').value=s.color;
+  document.getElementById('al-form-title').textContent='Editar estado';
+  document.getElementById('al-save-btn').textContent='✓ Guardar';
+  document.getElementById('al-cancel-btn').style.display='';
+}
+
+function cancelEditAdminList(){
+  document.getElementById('al-edit-idx').value='';
+  document.getElementById('al-nombre').value='';
+  document.getElementById('al-color').value='green';
+  document.getElementById('al-form-title').textContent='Agregar estado';
+  document.getElementById('al-save-btn').textContent='+ Agregar';
+  document.getElementById('al-cancel-btn').style.display='none';
+}
+
+function saveAdminListItem(){
+  const nombre=document.getElementById('al-nombre').value.trim();
+  if(!nombre){showToast('El nombre es obligatorio','error');return;}
+  const type=document.getElementById('al-type').value;
+  const list=type==='stock'?estadosStock:estadosDespacho;
+  const idx=document.getElementById('al-edit-idx').value;
+  const obj={nombre,color:document.getElementById('al-color').value};
+  if(idx!=='') list[parseInt(idx)]=obj;
+  else list.push(obj);
+  saveList(type==='stock'?'hik_estados_stock':'hik_estados_despacho', list);
+  if(type==='stock') estadosStock=[...list]; else estadosDespacho=[...list];
+  cancelEditAdminList();
+  renderAdminList(type);
+  updateEstadoSelects();
+  showToast('✓ Estado guardado','success');
+}
+
+function deleteAdminListItem(idx){
+  const type=document.getElementById('al-type').value;
+  const list=type==='stock'?estadosStock:estadosDespacho;
+  if(!confirm(`¿Eliminar "${list[idx].nombre}"?`))return;
+  list.splice(idx,1);
+  saveList(type==='stock'?'hik_estados_stock':'hik_estados_despacho', list);
+  if(type==='stock') estadosStock=[...list]; else estadosDespacho=[...list];
+  renderAdminList(type);
+  updateEstadoSelects();
+}
+
+function updateEstadoSelects(){
+  // Estado stock en modal editar
+  const ss=document.getElementById('ei-estado-stock');
+  if(ss) ss.innerHTML='<option value="">—</option>'+estadosStock.map(s=>`<option value="${s.nombre}">${s.nombre}</option>`).join('');
+  // Estado despacho en modal editar (reemplaza el viejo "estado interno")
+  const sd=document.getElementById('ei-estado');
+  if(sd) sd.innerHTML='<option value="">—</option>'+estadosDespacho.map(s=>`<option value="${s.nombre}">${s.nombre}</option>`).join('');
+}
+
+function renderAdminStockDespachoPreview(){
+  const sb=document.getElementById('admin-stock-list');
+  if(sb) sb.innerHTML=estadosStock.length?estadosStock.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid #f0f0ee;">
+      <div style="flex:1">${colorPill(s.nombre,s.color)}</div>
+      <button class="btn-sm" style="padding:2px 6px" onclick="editEstadoInline('stock',${i})" title="Editar">✏️</button>
+      <button class="btn-sm danger" style="padding:2px 6px" onclick="deleteEstadoInline('stock',${i})" title="Eliminar">🗑</button>
+    </div>`).join(''):'<div style="font-size:11px;color:#aaa">Sin estados</div>';
+  const db=document.getElementById('admin-despacho-list');
+  if(db) db.innerHTML=estadosDespacho.length?estadosDespacho.map((s,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:0.5px solid #f0f0ee;">
+      <div style="flex:1">${colorPill(s.nombre,s.color)}</div>
+      <button class="btn-sm" style="padding:2px 6px" onclick="editEstadoInline('despacho',${i})" title="Editar">✏️</button>
+      <button class="btn-sm danger" style="padding:2px 6px" onclick="deleteEstadoInline('despacho',${i})" title="Eliminar">🗑</button>
+    </div>`).join(''):'<div style="font-size:11px;color:#aaa">Sin estados</div>';
+}
+
+
+
+function openEditItem(id){
+  const p=allItems.find(x=>x.id===id);if(!p)return;
+  updateEstadoSelects(); // cargar selects dinámicos
+  document.getElementById('ei-id').value=id;
+  document.getElementById('ei-info').textContent=`${p.po} · Item ${p.item_no} · ${p.deposito==='China'?'Origen China':'Origen Uruguay'}`;
+  document.getElementById('ei-hik-order').value=p.hik_order_no||'';
+  document.getElementById('ei-sap').value=p.sap_code||'';
+  document.getElementById('ei-mat').value=p.material||'';
+  document.getElementById('ei-qty').value=p.qty||1;
+  document.getElementById('ei-price').value=p.price||0;
+  document.getElementById('ei-currency').value=p.currency||'USD';
+  document.getElementById('ei-fecha').value=p.fecha_estimada||'';
+  document.getElementById('ei-shipmethod').value=p.shipment_method_proveedor||'';
+  document.getElementById('ei-estado-stock').value=p.estado_stock||'';
+  document.getElementById('ei-guia').value=p.guia_num||'';
+  // Estado de despacho = estado interno del sistema (campo unificado)
+  document.getElementById('ei-estado').value=p.estado||'';
+  document.getElementById('ei-notas').value=p.notas||'';
+  const pSel=document.getElementById('ei-proy');
+  pSel.innerHTML='<option value="">Sin proyecto — stock libre</option>'+allProyectos.map(pr=>`<option value="${pr.id}"${p.proyecto_id===pr.id?' selected':''}>${pr.nombre}</option>`).join('');
+  openModal('editItemModal');
+}
+
+async function saveEditItem(){
+  const id=document.getElementById('ei-id').value;
+  const qty=parseInt(document.getElementById('ei-qty').value)||1;
+  const price=parseFloat(document.getElementById('ei-price').value)||0;
+  const proyId=document.getElementById('ei-proy').value||null;
+  const proy=allProyectos.find(p=>p.id===proyId);
+  const estado=document.getElementById('ei-estado').value;
+  const obj={
+    hik_order_no:document.getElementById('ei-hik-order').value.trim()||null,
+    sap_code:document.getElementById('ei-sap').value.trim(),
+    material:document.getElementById('ei-mat').value.trim(),
+    qty, price, amount:qty*price,
+    currency:document.getElementById('ei-currency').value||'USD',
+    fecha_estimada:parseFecha(document.getElementById('ei-fecha').value)||null,
+    shipment_method_proveedor:document.getElementById('ei-shipmethod').value||null,
+    estado_stock:document.getElementById('ei-estado-stock').value||null,
+    estado_despacho:estado||null, // mismo campo
+    guia_num:document.getElementById('ei-guia').value||null,
+    estado:estado||'Pendiente',
+    proyecto_id:proyId,
+    proyecto_nombre:proy?.nombre||null,
+    notas:document.getElementById('ei-notas').value,
+  };
+  const {error}=await sb.from('items').update(obj).eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  closeModal('editItemModal');
+  showToast('✓ Ítem actualizado','success');
+}
+
+async function deleteItem(){
+  const id=document.getElementById('ei-id').value;
+  const p=allItems.find(x=>x.id===id);if(!p)return;
+  if(!confirm(`¿Eliminar el ítem ${p.po}-${p.item_no}? Esta acción no se puede deshacer.`)) return;
+  const {error}=await sb.from('items').delete().eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  closeModal('editItemModal');
+  showToast('Ítem eliminado','');
+}
+
+// ─── EXPORTAR A EXCEL ───
+function itemToRow(p){
+  return {
+    'PO#': p.po,
+    'HIK Order No.': p.hik_order_no||'',
+    'HIK Item No.': p.item_no,
+    'HIK SAP Code': p.sap_code||'',
+    'Material Description': p.material||'',
+    'QTY': p.qty||0,
+    'Price/Unit': p.price||0,
+    'Amount': p.amount||(p.qty||0)*(p.price||0),
+    'Currency': p.currency||'USD',
+    'Estimated Finish Date': p.fecha_estimada||'',
+    'Estado stock': p.estado_stock||'',
+    'Shipment Method': p.shipment_method_proveedor||'',
+    'Estado despacho': p.estado||'',
+    'Guía': p.guia_num||'',
+    'Proyecto': p.proyecto_nombre||'Stock libre',
+    'Origen': p.deposito,
+  };
+}
+
+function recibToRow(p){
+  return {
+    ...itemToRow(p),
+    'Fecha recepción': p.fecha_recepcion||'',
+    'Recibido por': p.quien_recibio||'',
+    'Destino ARG': p.lugar_recepcion||'',
+    'Estado bulto': p.estado_bulto||'',
+    'Notas recepción': p.notas_recepcion||'',
+  };
+}
+
+function descargarExcel(rows, nombreHoja, nombreArchivo){
+  if(!rows.length){showToast('No hay datos para exportar','error');return;}
+  const ws=XLSX.utils.json_to_sheet(rows);
+  // Ajustar anchos de columna
+  const cols=Object.keys(rows[0]).map(k=>{
+    const maxLen=Math.max(k.length, ...rows.map(r=>String(r[k]||'').length));
+    return {wch:Math.min(maxLen+2, 40)};
+  });
+  ws['!cols']=cols;
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, nombreHoja);
+  const fecha=new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `${nombreArchivo}_${fecha}.xlsx`);
+  showToast(`✓ ${rows.length} filas exportadas`,'success');
+}
+
+function getFilteredDep(dep){
+  const key=dep==='China'?'china':'uy';
+  const s=(document.getElementById(key+'-s')?.value||'').toLowerCase();
+  const ef=document.getElementById(key+'-fest')?.value||'';
+  const pf=document.getElementById(key+'-fpo')?.value||'';
+  const prf=document.getElementById(key+'-fproy')?.value||'';
+  let f=allItems.filter(i=>i.deposito===dep&&i.estado!=='Recibido ARG');
+  if(ef) f=f.filter(i=>i.estado===ef);
+  if(pf) f=f.filter(i=>i.po===pf);
+  if(prf==='__libre__') f=f.filter(i=>!i.proyecto_nombre);
+  else if(prf) f=f.filter(i=>i.proyecto_nombre===prf);
+  if(s) f=f.filter(i=>(i.po+i.item_no+i.material+i.sap_code+i.proyecto_nombre+(i.hik_order_no||'')).toLowerCase().includes(s));
+  return f;
+}
+
+function exportDep(dep){
+  const rows=getFilteredDep(dep).map(itemToRow);
+  descargarExcel(rows, dep, `pedidos_${dep.toLowerCase()}`);
+}
+
+function exportDespachados(){
+  const s=(document.getElementById('desp-s')?.value||'').toLowerCase();
+  const cf=document.getElementById('desp-fc')?.value||'';
+  const df=document.getElementById('desp-fd')?.value||'';
+  let f=allItems.filter(i=>i.estado==='Despachado');
+  if(s) f=f.filter(i=>(i.po+i.material+i.courier+i.tracking+i.proyecto_nombre).toLowerCase().includes(s));
+  if(cf) f=f.filter(i=>i.courier===cf);
+  if(df) f=f.filter(i=>i.deposito===df);
+  const rows=f.map(p=>({...itemToRow(p),'Courier':p.courier||'',Tracking:p.tracking||'','Fecha despacho':p.fecha_despacho||''}));
+  descargarExcel(rows,'Despachados','despachados');
+}
+
+function exportRecibidos(){
+  const s=(document.getElementById('recib-s')?.value||'').toLowerCase();
+  const df=document.getElementById('recib-fd')?.value||'';
+  const pf=document.getElementById('recib-fproy')?.value||'';
+  let f=allItems.filter(i=>i.estado==='Recibido ARG');
+  if(s) f=f.filter(i=>(i.po+i.material+i.sap_code+i.proyecto_nombre+i.quien_recibio+i.lugar_recepcion).toLowerCase().includes(s));
+  if(df) f=f.filter(i=>i.deposito===df);
+  if(pf) f=f.filter(i=>i.proyecto_nombre===pf);
+  const rows=f.map(recibToRow);
+  descargarExcel(rows,'Recibidos ARG','recibidos_argentina');
+}
+
+function exportProyecto(){
+  const proy=document.getElementById('proy-sel')?.value;
+  if(!proy){showToast('Seleccioná un proyecto primero','error');return;}
+  const rows=allItems.filter(i=>i.proyecto_nombre===proy).map(p=>p.estado==='Recibido ARG'?recibToRow(p):itemToRow(p));
+  descargarExcel(rows, proy.slice(0,30), `proyecto_${proy.toLowerCase().replace(/[^a-z0-9]/gi,'_')}`);
+}
+
+// ─── DOCUMENTOS DEL PEDIDO ───
+let allDocs = [];
+
+async function loadDocs(){
+  const {data}=await sb.from('pedido_docs').select('*').order('created_at',{ascending:false});
+  allDocs=data||[];
+}
+
+async function openDocs(po, dep){
+  document.getElementById('docs-po').value=po;
+  document.getElementById('docs-dep').value=dep;
+  document.getElementById('docs-po-label').textContent=po;
+  document.getElementById('doc-fn').textContent='Seleccionar archivos (PDF, Excel, imagen...)';
+  document.getElementById('doc-desc').value='';
+  await loadDocs();
+  renderDocsList();
+  openModal('docsModal');
+}
+
+function renderDocsList(){
+  const po=document.getElementById('docs-po').value;
+  const cont=document.getElementById('docs-list');
+  const docs=allDocs.filter(d=>d.po===po);
+  if(!docs.length){cont.innerHTML='<div style="font-size:11px;color:#aaa;padding:8px 0">Sin documentos cargados para este pedido</div>';return;}
+  cont.innerHTML=docs.map(d=>{
+    const icon=d.nombre.toLowerCase().includes('.xls')||d.nombre.toLowerCase().includes('.csv')?'📊':'📄';
+    return `<div style="display:flex;align-items:center;gap:8px;background:#fafaf8;border:0.5px solid #e5e5e5;border-radius:6px;padding:8px 10px;margin-bottom:6px;">
+      <span>${icon}</span>
+      <div style="flex:1;min-width:0;">
+        <div style="font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${d.nombre}</div>
+        <div style="font-size:10px;color:#888">${d.tipo}${d.descripcion?' · '+d.descripcion:''} · ${d.created_at?d.created_at.split('T')[0]:''}</div>
+      </div>
+      ${d.url?`<a href="${d.url}" target="_blank" class="btn-sm" style="text-decoration:none;padding:2px 8px">⬇ Ver</a>`:''}
+      <button class="btn-sm danger" style="padding:2px 6px" onclick="deleteDoc('${d.id}')">🗑</button>
+    </div>`;
+  }).join('');
+}
+
+function onDocFileSel(input){
+  const n=input.files.length;
+  document.getElementById('doc-fn').textContent=n===0?'Seleccionar archivos (PDF, Excel, imagen...)':n===1?input.files[0].name:`${n} archivos seleccionados`;
+}
+
+async function saveDoc(){
+  const po=document.getElementById('docs-po').value;
+  const dep=document.getElementById('docs-dep').value;
+  const tipo=document.getElementById('doc-tipo').value;
+  const desc=document.getElementById('doc-desc').value.trim();
+  const fileEl=document.getElementById('doc-file');
+  if(!fileEl.files.length){showToast('Seleccioná uno o varios archivos','error');return;}
+
+  const files=Array.from(fileEl.files);
+  showToast(`Subiendo ${files.length} archivo${files.length>1?'s':''}...`,'');
+  const rows=[];
+  for(const f of files){
+    const r=await subirArchivo(f, 'pedidos/'+po.replace(/[^a-zA-Z0-9]/g,'_'));
+    if(r) rows.push({po,deposito:dep,tipo,nombre:f.name,descripcion:desc,url:r.url,path:r.path,created_by:currentUser.id});
+    else showToast(`Error subiendo ${f.name}`,'error');
+  }
+  if(!rows.length)return;
+  const {error}=await sb.from('pedido_docs').insert(rows);
+  if(error){showToast(error.message,'error');return;}
+  document.getElementById('doc-fn').textContent='Seleccionar archivos (PDF, Excel, imagen...)';
+  document.getElementById('doc-desc').value='';
+  fileEl.value='';
+  await loadDocs();
+  renderDocsList();
+  showToast(`✓ ${rows.length} documento${rows.length>1?'s':''} subido${rows.length>1?'s':''}`,'success');
+}
+
+async function deleteDoc(id){
+  if(!confirm('¿Eliminar este documento?'))return;
+  const doc=allDocs.find(d=>d.id===id);
+  if(doc&&doc.path){
+    await sb.storage.from('documentos').remove([doc.path]);
+  }
+  const {error}=await sb.from('pedido_docs').delete().eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  await loadDocs();
+  renderDocsList();
+}
+
+// ─── DEUDAS / ESTADO DE CUENTA ───
+let allDeudas = [];
+let allPagos = [];
+let deudaTabActual = 'China';
+let deudaSeleccion = new Set();
+
+async function loadDeudas(){
+  const [d,p]=await Promise.all([
+    sb.from('deudas').select('*').order('payment_due_date',{ascending:true}),
+    sb.from('pagos').select('*')
+  ]);
+  allDeudas=d.data||[];
+  allPagos=p.data||[];
+}
+
+function switchDeudaTab(origen){
+  deudaTabActual=origen;
+  deudaSeleccion.clear();
+  document.getElementById('dst-China').style.background = origen==='China'?'#fff':'transparent';
+  document.getElementById('dst-China').style.fontWeight = origen==='China'?'500':'400';
+  document.getElementById('dst-China').style.color = origen==='China'?'#1a1a1a':'#666';
+  document.getElementById('dst-Uruguay').style.background = origen==='Uruguay'?'#fff':'transparent';
+  document.getElementById('dst-Uruguay').style.fontWeight = origen==='Uruguay'?'500':'400';
+  document.getElementById('dst-Uruguay').style.color = origen==='Uruguay'?'#1a1a1a':'#666';
+  renderDeudas();
+}
+
+// Saldo real considerando los pagos registrados en el sistema
+function saldoDeuda(d){
+  const pagosExtra=allPagos.filter(p=>p.deuda_id===d.id).reduce((s,p)=>s+(p.monto||0),0);
+  // owe_balance es el saldo que vino del Excel; le restamos pagos que registramos nosotros
+  return Math.max(0, (d.owe_balance||0) - pagosExtra);
+}
+function pagadoDeuda(d){
+  const pagosExtra=allPagos.filter(p=>p.deuda_id===d.id).reduce((s,p)=>s+(p.monto||0),0);
+  return (d.paid||0)+pagosExtra;
+}
+
+function renderDeudas(){
+  const s=(document.getElementById('deuda-s')?.value||'').toLowerCase();
+  const fs=document.getElementById('deuda-fstatus')?.value||'';
+  let lista=allDeudas.filter(d=>d.origen===deudaTabActual);
+  if(s) lista=lista.filter(d=>((d.ci_no||'')+(d.po||'')).toLowerCase().includes(s));
+  if(fs==='pendiente') lista=lista.filter(d=>saldoDeuda(d)>0.01);
+  else if(fs==='pagado') lista=lista.filter(d=>saldoDeuda(d)<=0.01);
+  else if(fs==='vencido') lista=lista.filter(d=>saldoDeuda(d)>0.01 && d.payment_due_date && new Date(d.payment_due_date)<TODAY);
+
+  // Totales (de TODO el origen, no solo lo filtrado)
+  const todoOrigen=allDeudas.filter(d=>d.origen===deudaTabActual);
+  const totalFact=todoOrigen.reduce((s,d)=>s+(d.amount||0),0);
+  const totalPag=todoOrigen.reduce((s,d)=>s+pagadoDeuda(d),0);
+  const totalSaldo=todoOrigen.reduce((s,d)=>s+saldoDeuda(d),0);
+  document.getElementById('deuda-total').textContent='$'+fmtMoney(totalFact);
+  document.getElementById('deuda-pagado').textContent='$'+fmtMoney(totalPag);
+  document.getElementById('deuda-saldo').textContent='$'+fmtMoney(totalSaldo);
+  document.getElementById('deuda-resumen').textContent=`${deudaTabActual==='China'?'HQ-China':'HDTECH Uruguay'} · ${todoOrigen.length} facturas · Adeudado USD ${fmtMoney(totalSaldo)}`;
+  document.getElementById('deuda-cnt').textContent=allDeudas.filter(d=>saldoDeuda(d)>0.01).length;
+
+  // Total seleccionado
+  let selTotal=0;
+  deudaSeleccion.forEach(id=>{const d=allDeudas.find(x=>x.id===id);if(d)selTotal+=saldoDeuda(d);});
+  document.getElementById('deuda-selec').textContent='$'+fmtMoney(selTotal);
+  document.getElementById('deuda-pagar-selec').style.display=deudaSeleccion.size>0?'':'none';
+  const elimBtn=document.getElementById('deuda-eliminar-selec');
+  if(elimBtn) elimBtn.style.display=deudaSeleccion.size>0?'':'none';
+
+  const body=document.getElementById('deudas-body');
+  if(!lista.length){body.innerHTML='<div class="empty">Sin facturas — pegá las deudas con el botón de arriba</div>';return;}
+
+  body.innerHTML=`<div class="tbl-wrap"><table style="font-size:11px;table-layout:fixed;width:100%;min-width:1150px;">
+    <thead><tr>
+      <th style="width:3%"><input type="checkbox" id="deuda-check-all" onchange="toggleAllDeudas(this)"></th>
+      <th style="width:11%">CI / PI No.</th>
+      <th style="width:9%">PO</th>
+      <th style="width:7%">Entrega</th>
+      <th style="width:5%">Term</th>
+      <th style="width:8%">Facturado</th>
+      <th style="width:8%">Pagado</th>
+      <th style="width:8%">Saldo</th>
+      <th style="width:8%">Vencimiento</th>
+      <th style="width:5%">Días</th>
+      <th style="width:8%">Estado</th>
+      <th style="width:12%">Remark</th>
+      <th style="width:8%">Acción</th>
+    </tr></thead>
+    <tbody>${lista.map(d=>{
+      const saldo=saldoDeuda(d);
+      const pagado=pagadoDeuda(d);
+      const vencido=saldo>0.01 && d.payment_due_date && new Date(d.payment_due_date)<TODAY;
+      const saldado=saldo<=0.01;
+      const checked=deudaSeleccion.has(d.id)?'checked':'';
+      let estadoBadge=saldado?'<span class="pill p-desp">Saldado</span>':vencido?'<span class="pill p-alert">Vencido</span>':'<span class="pill p-pend">Pendiente</span>';
+      return `<tr style="${vencido?'background:rgba(252,235,235,.3)':''}">
+        <td><input type="checkbox" ${checked} onchange="toggleDeuda('${d.id}',this)"></td>
+        <td style="font-weight:500" title="${d.ci_no||''}">${d.ci_no||'—'}</td>
+        <td title="${d.po||''}">${d.po||'—'}</td>
+        <td>${d.delivery_date||'—'}</td>
+        <td>${d.payment_term||'—'}</td>
+        <td>$${fmtMoney(d.amount)}</td>
+        <td style="color:#0f6e56">$${fmtMoney(pagado)}</td>
+        <td style="font-weight:600;color:${saldado?'#0f6e56':'#a32d2d'}">$${fmtMoney(saldo)}</td>
+        <td>${d.payment_due_date||'—'}</td>
+        <td style="${vencido?'color:#a32d2d;font-weight:500':''}">${d.overdue_days!=null?d.overdue_days:'—'}</td>
+        <td>${estadoBadge}</td>
+        <td title="${(d.remark||'').replace(/"/g,'&quot;')}" style="font-size:10px;color:#666">${d.remark||'—'}</td>
+        <td>${saldado?`<button class="btn-sm" onclick="verPagos('${d.id}')" title="Ver pagos">👁</button>`:`<button class="btn-sm green" onclick="openPago('${d.id}')">💵 Pagar</button>`} <button class="btn-sm danger" onclick="eliminarDeuda('${d.id}')" title="Eliminar" style="padding:2px 6px">🗑</button></td>
+      </tr>`;
+    }).join('')}</tbody>
+  </table></div>`;
+}
+
+function toggleDeuda(id,el){
+  if(el.checked) deudaSeleccion.add(id); else deudaSeleccion.delete(id);
+  renderDeudas();
+}
+function toggleAllDeudas(el){
+  const s=(document.getElementById('deuda-s')?.value||'').toLowerCase();
+  const fs=document.getElementById('deuda-fstatus')?.value||'';
+  let lista=allDeudas.filter(d=>d.origen===deudaTabActual);
+  if(s) lista=lista.filter(d=>((d.ci_no||'')+(d.po||'')).toLowerCase().includes(s));
+  if(fs==='pendiente') lista=lista.filter(d=>saldoDeuda(d)>0.01);
+  else if(fs==='pagado') lista=lista.filter(d=>saldoDeuda(d)<=0.01);
+  else if(fs==='vencido') lista=lista.filter(d=>saldoDeuda(d)>0.01 && d.payment_due_date && new Date(d.payment_due_date)<TODAY);
+  if(el.checked) lista.forEach(d=>deudaSeleccion.add(d.id));
+  else lista.forEach(d=>deudaSeleccion.delete(d.id));
+  renderDeudas();
+}
+
+function openPago(id){
+  const d=allDeudas.find(x=>x.id===id);if(!d)return;
+  const saldo=saldoDeuda(d);
+  document.getElementById('pago-ids').value=id;
+  document.getElementById('pago-info').textContent=`${d.ci_no||d.po} — Facturado USD ${fmtMoney(d.amount)}`;
+  document.getElementById('pago-saldo-info').textContent=`Saldo pendiente: USD ${fmtMoney(saldo)}`;
+  document.getElementById('pago-monto').value='';
+  document.getElementById('pago-monto').dataset.saldo=saldo.toFixed(2);
+  document.getElementById('pago-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('pago-nota').value='';
+  openModal('pagoModal');
+}
+
+function pagarSeleccionados(){
+  if(!deudaSeleccion.size)return;
+  const ids=[...deudaSeleccion];
+  let saldoTotal=0;
+  ids.forEach(id=>{const d=allDeudas.find(x=>x.id===id);if(d)saldoTotal+=saldoDeuda(d);});
+  document.getElementById('pago-ids').value=ids.join(',');
+  document.getElementById('pago-info').textContent=`${ids.length} facturas seleccionadas`;
+  document.getElementById('pago-saldo-info').textContent=`Saldo total: USD ${fmtMoney(saldoTotal)}`;
+  document.getElementById('pago-monto').value=saldoTotal.toFixed(2);
+  document.getElementById('pago-monto').dataset.saldo=saldoTotal.toFixed(2);
+  document.getElementById('pago-fecha').value=new Date().toISOString().split('T')[0];
+  document.getElementById('pago-nota').value='';
+  openModal('pagoModal');
+}
+
+async function savePago(){
+  const ids=document.getElementById('pago-ids').value.split(',').filter(Boolean);
+  let monto=parseMonto(document.getElementById('pago-monto').value);
+  const fecha=document.getElementById('pago-fecha').value||null;
+  const metodo=document.getElementById('pago-metodo').value;
+  const nota=document.getElementById('pago-nota').value;
+  if(monto<=0){showToast('Ingresá un monto válido','error');return;}
+
+  const pagosInsert=[];
+  if(ids.length===1){
+    pagosInsert.push({deuda_id:ids[0],monto,fecha,metodo,nota,created_by:currentUser.id});
+  } else {
+    // Distribuir el pago entre las facturas seleccionadas (más viejas primero)
+    const deudasOrden=ids.map(id=>allDeudas.find(d=>d.id===id)).filter(Boolean)
+      .sort((a,b)=>new Date(a.payment_due_date||'2099')-new Date(b.payment_due_date||'2099'));
+    let restante=monto;
+    for(const d of deudasOrden){
+      if(restante<=0)break;
+      const saldo=saldoDeuda(d);
+      const aplicar=Math.min(saldo,restante);
+      if(aplicar>0){
+        pagosInsert.push({deuda_id:d.id,monto:aplicar,fecha,metodo,nota:nota+(ids.length>1?' (pago múltiple)':''),created_by:currentUser.id});
+        restante-=aplicar;
+      }
+    }
+  }
+  const {error}=await sb.from('pagos').insert(pagosInsert);
+  if(error){showToast(error.message,'error');return;}
+  closeModal('pagoModal');
+  deudaSeleccion.clear();
+  showToast('✓ Pago registrado','success');
+  await loadDeudas();
+  renderDeudas();
+}
+
+function verPagos(id){
+  const d=allDeudas.find(x=>x.id===id);if(!d)return;
+  const pagos=allPagos.filter(p=>p.deuda_id===id);
+  document.getElementById('ver-title').textContent='💵 Historial de pagos';
+  let html=`<div style="background:#fafaf8;border-radius:8px;padding:10px 14px;margin-bottom:12px;">
+    <div style="font-size:13px;font-weight:500">${d.ci_no||d.po}</div>
+    <div style="font-size:11px;color:#888">Facturado: USD ${fmtMoney(d.amount)} · Saldado ✓</div>
+  </div>`;
+  if(d.paid>0) html+=`<div style="font-size:12px;padding:6px 0;border-bottom:0.5px solid #eee">Pago inicial (del Excel): <b>USD ${fmtMoney(d.paid)}</b></div>`;
+  pagos.forEach(p=>{
+    html+=`<div style="font-size:12px;padding:6px 0;border-bottom:0.5px solid #eee;display:flex;justify-content:space-between"><span>${p.fecha||''} · ${p.metodo||''}${p.nota?' · '+p.nota:''}</span><b>USD ${fmtMoney(p.monto)}</b></div>`;
+  });
+  if(!pagos.length&&!d.paid) html+='<div style="font-size:12px;color:#888">Sin pagos registrados</div>';
+  document.getElementById('ver-content').innerHTML=html;
+  openModal('verModal');
+}
+
+async function doImportDeudas(){
+  const raw=document.getElementById('imp-deuda-txt').value.trim();
+  const origen=document.getElementById('imp-deuda-origen').value;
+  if(!raw){closeModal('importDeudaModal');return;}
+  const lines=raw.split('\n').filter(l=>l.trim());
+  const first=lines[0].toLowerCase();
+  const hasH=first.includes('ci no')||first.includes('pi no')||first.includes('delivery')||first.includes('amount')||first.includes('owe')||first.includes('payment term');
+  const data=hasH?lines.slice(1):lines;
+  if(!data.length){showToast('Sin datos','error');return;}
+
+  let added=0,updated=0,errors=[];
+  const debug=[];
+
+  for(const line of data){
+    const c=line.split('\t').map(x=>(x||'').trim());
+    if(c.length<3||!c[0]) continue;
+    // Saltear filas de subtítulo tipo "Merchandises / Pallet"
+    if(!/\d/.test(c[0]) && !/[A-Z]\d/.test(c[0])) continue;
+
+    // Detectar números y fechas en la fila
+    const nums=[]; // {idx, val}
+    const fechas=[]; // {idx, val}
+    c.forEach((v,idx)=>{
+      const f=parseFecha(v);
+      if(f){ fechas.push({idx,val:f}); return; } // si es fecha, NO es monto
+      const tieneSimbolo=/us?\$|usd/i.test(v);
+      const tieneDecimal=/\d[.,]\d{2}/.test(v);
+      const n=parseMonto(v);
+      // Quitar prefijo de moneda antes de evaluar si es código (ej. US$ no es código)
+      const sinMoneda=v.replace(/us?\$|usd|\$/gi,'').trim();
+      const esCodigo=/[A-Za-z]/.test(sinMoneda); // tiene letras = código tipo H130, C2601...
+      if(n>0 && !esCodigo && (tieneSimbolo||tieneDecimal)) nums.push({idx,val:n});
+    });
+
+    // CI/PI No = primera celda. PO: en Uruguay es la segunda si parece código
+    const ci_no=c[0];
+    let po=ci_no;
+    if(origen==='Uruguay' && c[1] && /[A-Z]\d/.test(c[1])) po=c[1];
+
+    // Payment Term: celda tipo H120, H130, H190
+    const term=c.find(v=>/^H\d{2,3}$/i.test(v))||'';
+    // Status: PAID / UNPAID
+    const status=c.find(v=>/^(paid|unpaid|partial)$/i.test(v))||'';
+    // Overdue days: el último número entero "chico" (sin decimales) suele ser días
+    let overdue=null;
+    for(let i=c.length-1;i>=0;i--){
+      if(/^\d{1,4}$/.test(c[i].trim())){ overdue=parseInt(c[i]); break; }
+    }
+    // Fechas: la primera es delivery, la última es due date
+    const delivery_date=fechas.length?fechas[0].val:null;
+    const payment_due_date=fechas.length>1?fechas[fechas.length-1].val:(fechas.length?fechas[0].val:null);
+
+    // Montos: el mayor suele ser Amount. Buscamos amount, paid, owe
+    // Los montos con decimales (>100) son los relevantes
+    const montos=nums.filter(n=>n.val>=1).map(n=>n.val);
+    let amount=0, paid=0, owe=0;
+    const sorted=[...montos].sort((a,b)=>b-a);
+    if(montos.length>=3){
+      amount=sorted[0];
+      // Caso: amount aparece dos veces (amount y owe iguales, paid vacío) → UNPAID
+      if(Math.abs(sorted[0]-sorted[1])<1){ owe=sorted[0]; paid=0; }
+      else {
+        // buscar par paid+owe que sume amount
+        let found=false;
+        for(let i=1;i<sorted.length&&!found;i++){
+          for(let j=i+1;j<sorted.length;j++){
+            if(Math.abs(sorted[i]+sorted[j]-amount)<1){ paid=sorted[i]; owe=sorted[j]; found=true; break; }
+          }
+        }
+        if(!found){ owe=sorted[1]; paid=amount-owe; }
+      }
+    } else if(montos.length===2){
+      // Si los dos son iguales → amount=owe, paid=0 (UNPAID típico)
+      if(Math.abs(sorted[0]-sorted[1])<1){ amount=sorted[0]; owe=sorted[0]; paid=0; }
+      else { amount=sorted[0]; owe=sorted[1]; paid=amount-owe; }
+    } else if(montos.length===1){
+      amount=montos[0]; owe=montos[0]; paid=0;
+    }
+    if(paid<0)paid=0;
+
+    // Remark: buscar celdas con texto descriptivo (no código, no fecha, no monto, no status, no term)
+    let remark='';
+    for(let i=c.length-1;i>=4;i--){
+      const v=(c[i]||'').trim();
+      if(!v) continue;
+      if(parseFecha(v)) continue;                     // es fecha
+      if(/^-?\d+([.,]\d+)?$/.test(v)) continue;       // es número puro
+      if(/us?\$|usd/i.test(v)) continue;              // es monto
+      if(/^H\d{2,3}$/i.test(v)) continue;             // es payment term
+      if(/^(paid|unpaid|partial)$/i.test(v)) continue;// es status
+      if(/^[A-Z]{2,3}$/.test(v)) continue;            // es currency (USD, etc)
+      if(v===ci_no||v===po) continue;                 // es código
+      // Es texto descriptivo → remark
+      remark=v; break;
+    }
+
+    const obj={origen,ci_no,po,delivery_date,payment_term:term,status,
+      amount,paid,owe_balance:owe,currency:'USD',payment_due_date,overdue_days:overdue,remark};
+
+    const existing=allDeudas.find(d=>d.origen===origen&&d.ci_no===obj.ci_no);
+    if(existing){
+      const {error}=await sb.from('deudas').update(obj).eq('id',existing.id);
+      if(error)errors.push(`${ci_no}: ${error.message}`); else updated++;
+    } else {
+      const {error}=await sb.from('deudas').insert({...obj,created_by:currentUser.id});
+      if(error)errors.push(`${ci_no}: ${error.message}`); else added++;
+    }
+  }
+
+  if(errors.length){
+    document.getElementById('imp-deuda-errors-list').innerHTML=errors.map(e=>'• '+e).join('<br>');
+    document.getElementById('imp-deuda-errors').style.display='block';
+  } else {
+    closeModal('importDeudaModal');
+    document.getElementById('imp-deuda-txt').value='';
+  }
+  showToast(`✓ ${added} nuevas · ${updated} actualizadas`+(errors.length?` · ${errors.length} errores`:''), errors.length?'':'success');
+  await loadDeudas();
+  renderDeudas();
+}
+
+function exportDeudas(){
+  const lista=allDeudas.filter(d=>d.origen===deudaTabActual);
+  const rows=lista.map(d=>({
+    'CI/PI No.':d.ci_no||'','PO':d.po||'','Entrega':d.delivery_date||'','Term':d.payment_term||'',
+    'Facturado':d.amount||0,'Pagado':pagadoDeuda(d),'Saldo':saldoDeuda(d),'Currency':d.currency||'USD',
+    'Vencimiento':d.payment_due_date||'','Días vencido':d.overdue_days||'','Remark':d.remark||''
+  }));
+  descargarExcel(rows,`Deudas ${deudaTabActual}`,`deudas_${deudaTabActual.toLowerCase()}`);
+}
+
+async function eliminarDeuda(id){
+  const d=allDeudas.find(x=>x.id===id);if(!d)return;
+  if(!confirm(`¿Eliminar la factura ${d.ci_no||d.po}? Se borrarán también sus pagos registrados. Esta acción no se puede deshacer.`))return;
+  // Borrar pagos asociados primero (por si el cascade no está)
+  await sb.from('pagos').delete().eq('deuda_id',id);
+  const {error}=await sb.from('deudas').delete().eq('id',id);
+  if(error){showToast(error.message,'error');return;}
+  deudaSeleccion.delete(id);
+  showToast('Factura eliminada','');
+  await loadDeudas();
+  renderDeudas();
+}
+
+async function eliminarDeudasSeleccionadas(){
+  if(!deudaSeleccion.size)return;
+  const ids=[...deudaSeleccion];
+  if(!confirm(`¿Eliminar ${ids.length} factura${ids.length>1?'s':''} seleccionada${ids.length>1?'s':''}? Se borrarán también sus pagos. Esta acción no se puede deshacer.`))return;
+  await sb.from('pagos').delete().in('deuda_id',ids);
+  const {error}=await sb.from('deudas').delete().in('id',ids);
+  if(error){showToast(error.message,'error');return;}
+  deudaSeleccion.clear();
+  showToast(`✓ ${ids.length} factura${ids.length>1?'s':''} eliminada${ids.length>1?'s':''}`,'');
+  await loadDeudas();
+  renderDeudas();
+}
+
+async function limpiarDatosViejos(){
+  // Valores que son ESTADOS (no métodos de envío) y que quedaron mal en shipment_method_proveedor
+  const estadosConocidos=['despachado','pendiente','en tránsito','en transito','recibido arg','en camino'];
+  const aReparar=allItems.filter(i=>{
+    const sm=(i.shipment_method_proveedor||'').toLowerCase().trim();
+    return estadosConocidos.includes(sm);
+  });
+
+  if(!aReparar.length){
+    showToast('No hay ítems para reparar — todo está OK','success');
+    return;
+  }
+
+  if(!confirm(`Se encontraron ${aReparar.length} ítems con un estado guardado en el campo "Ship. Method".\n\nSe va a limpiar ese campo (queda vacío) para que dejen de mostrar "Despachado" donde no corresponde. El estado real del ítem NO se toca.\n\n¿Continuar?`)) return;
+
+  let ok=0;
+  for(const item of aReparar){
+    const {error}=await sb.from('items').update({shipment_method_proveedor:null}).eq('id',item.id);
+    if(!error) ok++;
+  }
+  showToast(`✓ ${ok} ítems reparados`,'success');
+  await loadItems();
+  renderAll();
+}
+
+function readCsv(input){
+  const f=input.files[0];if(!f)return;
+  document.getElementById('imp-fn').textContent=f.name;
+  const r=new FileReader();r.onload=e=>{document.getElementById('imp-txt').value=e.target.result;};r.readAsText(f);
+}
+
+// ─── TAB NAV ───
+function goTab(id,el){
+  document.querySelectorAll('.main-tab').forEach(t=>t.classList.remove('active'));
+  if(el)el.classList.add('active');
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+id)?.classList.add('active');
+  // Limpiar selección masiva al cambiar de pestaña
+  if(id!=='china'&&id!=='uy'){itemSeleccion.clear();const bb=document.getElementById('bulk-bar');if(bb)bb.style.display='none';}
+  if(id==='buscar')document.getElementById('gq')?.focus();
+  if(id==='admin')loadUsers();
+  if(id==='proyectos')renderProyectoTab();
+  if(id==='deudas'){loadDeudas().then(()=>{switchDeudaTab(deudaTabActual);});}
+}
+
+// ─── MODAL ───
+function openModal(id){
+  document.getElementById(id).classList.add('open');
+  if(id==='newUserModal'){
+    document.getElementById('nu-pass-hint').style.display=document.getElementById('nu-id').value?'':'none';
+  }
+}
+function closeModal(id){document.getElementById(id).classList.remove('open');}
+document.querySelectorAll('.modal-bg').forEach(m=>{m.addEventListener('click',e=>{if(e.target===m)m.classList.remove('open');});});
+
+// ─── TOAST ───
+function showToast(msg,type=''){
+  const wrap=document.getElementById('toasts');
+  const t=document.createElement('div');
+  t.className='toast'+(type?' '+type:'');
+  t.textContent=msg;
+  wrap.appendChild(t);
+  setTimeout(()=>t.remove(),3500);
+}
+</script>
+</body>
+</html>
