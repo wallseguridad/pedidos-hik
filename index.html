@@ -1361,7 +1361,7 @@ function renderDesp(){
     block.innerHTML=`
       <div class="po-header" onclick="togglePO('${uid}')">
         <span class="po-label">▾ ${po} <span class="${dep==='China'?'o-china':'o-uy'}">${dep}</span></span>
-        <span class="po-meta"><span>${couriers||'—'}</span><span>${its.length} ítems</span><span>USD ${fmtMoney(total)}</span></span>
+        <span class="po-meta"><span>${couriers||'—'}</span><span>${its.length} ítems</span><span>USD ${fmtMoney(total)}</span><button class="btn-sm" onclick="event.stopPropagation();openDocs('${po}','${dep}')" title="Documentos del pedido">📎 Docs</button></span>
       </div>
       <div class="po-body" id="${uid}">
         <table style="table-layout:fixed;width:100%;min-width:950px;"><thead><tr>
@@ -1412,7 +1412,7 @@ function renderRecibidos(){
     block.innerHTML=`
       <div class="po-header" onclick="togglePO('${uid}')">
         <span class="po-label">▾ ${po} <span class="${dep==='China'?'o-china':'o-uy'}">${dep}</span> <span class="pill p-recib">Recibido ARG</span></span>
-        <span class="po-meta"><span>${fechas||'—'}</span><span>${its.length} ítems</span><span>USD ${fmtMoney(tot)}</span></span>
+        <span class="po-meta"><span>${fechas||'—'}</span><span>${its.length} ítems</span><span>USD ${fmtMoney(tot)}</span><button class="btn-sm" onclick="event.stopPropagation();openDocs('${po}','${dep}')" title="Documentos del pedido">📎 Docs</button></span>
       </div>
       <div class="po-body" id="${uid}">
         <table style="table-layout:fixed;width:100%;min-width:950px;"><thead><tr>
