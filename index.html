@@ -898,6 +898,7 @@ async function doLogin(){
     return;
   }
   currentUser = data;
+  console.log('ROL DETECTADO:', JSON.stringify(data.rol), '→ esVendedor:', esRolVendedor());
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
   document.getElementById('user-name-top').textContent = data.nombre;
@@ -926,9 +927,9 @@ function doLogout(){
 }
 
 function applyRoleUI(){
-  const rol = currentUser.rol;
+  const rol = (currentUser.rol||'').toLowerCase().trim();
   const canWrite = rol==='admin'||rol==='compras';
-  const esVendedor = rol==='vendedor';
+  const esVendedor = esRolVendedor();
   document.getElementById('tab-admin').style.display = rol==='admin'?'':'none';
   document.getElementById('btn-add-china').style.display = canWrite?'':'none';
   document.getElementById('btn-add-uy').style.display = canWrite?'':'none';
@@ -956,7 +957,11 @@ function applyRoleUI(){
 }
 
 // ¿Puede ver precios/montos? Vendedor NO.
-function canSeePrices(){ return currentUser?.rol!=='vendedor'; }
+function esRolVendedor(){
+  const r=(currentUser?.rol||'').toLowerCase().trim();
+  return r==='vendedor'||r==='ventas'||r==='vendedores'||r==='seller'||r==='sales';
+}
+function canSeePrices(){ return !esRolVendedor(); }
 // ─── LOAD DATA ───
 async function loadAll(){
   await Promise.all([loadItems(), loadProyectos(), loadUsers()]);
