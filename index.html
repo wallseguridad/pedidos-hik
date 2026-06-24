@@ -306,7 +306,7 @@ tbody tr:hover{background:#fafaf8;}
           <select class="fsel" id="china-fproy" onchange="renderDep('China')"><option value="">Todos los proyectos</option></select>
         </div>
         <div style="display:flex;gap:6px;">
-          <button class="btn-sm" onclick="exportDep('China')">📥 Exportar Excel</button>
+          <button class="btn-sm exp-btn" onclick="exportDep('China')">📥 Exportar Excel</button>
           <button class="btn-p china" id="btn-add-china" onclick="openNewItem('China')">+ Agregar ítem</button>
         </div>
       </div>
@@ -326,7 +326,7 @@ tbody tr:hover{background:#fafaf8;}
           <select class="fsel" id="uy-fproy" onchange="renderDep('Uruguay')"><option value="">Todos los proyectos</option></select>
         </div>
         <div style="display:flex;gap:6px;">
-          <button class="btn-sm" onclick="exportDep('Uruguay')">📥 Exportar Excel</button>
+          <button class="btn-sm exp-btn" onclick="exportDep('Uruguay')">📥 Exportar Excel</button>
           <button class="btn-p" id="btn-add-uy" onclick="openNewItem('Uruguay')">+ Agregar ítem</button>
         </div>
       </div>
@@ -341,7 +341,7 @@ tbody tr:hover{background:#fafaf8;}
           <select class="fsel" id="desp-fc" onchange="renderDesp()"><option value="">Todos los courier</option><option>FedEx</option><option>DHL</option><option>UPS</option></select>
           <select class="fsel" id="desp-fd" onchange="renderDesp()"><option value="">China + Uruguay</option><option value="China">Solo China</option><option value="Uruguay">Solo Uruguay</option></select>
         </div>
-        <button class="btn-sm" onclick="exportDespachados()">📥 Exportar Excel</button>
+        <button class="btn-sm exp-btn" onclick="exportDespachados()">📥 Exportar Excel</button>
       </div>
       <div id="desp-body"></div>
     </div>
@@ -357,7 +357,7 @@ tbody tr:hover{background:#fafaf8;}
           <select class="fsel" id="recib-fd" onchange="renderRecibidos()"><option value="">China + Uruguay</option><option value="China">Solo China</option><option value="Uruguay">Solo Uruguay</option></select>
           <select class="fsel" id="recib-fproy" onchange="renderRecibidos()"><option value="">Todos los proyectos</option></select>
         </div>
-        <button class="btn-sm" onclick="exportRecibidos()">📥 Exportar Excel</button>
+        <button class="btn-sm exp-btn" onclick="exportRecibidos()">📥 Exportar Excel</button>
       </div>
       <div id="recib-body"></div>
     </div>
@@ -928,10 +928,20 @@ function doLogout(){
 function applyRoleUI(){
   const rol = currentUser.rol;
   const canWrite = rol==='admin'||rol==='compras';
+  const esVendedor = rol==='vendedor';
   document.getElementById('tab-admin').style.display = rol==='admin'?'':'none';
   document.getElementById('btn-add-china').style.display = canWrite?'':'none';
   document.getElementById('btn-add-uy').style.display = canWrite?'':'none';
   document.getElementById('btn-new-proy').style.display = canWrite?'':'none';
+
+  // Ocultar pestaña Deudas para vendedor
+  document.querySelectorAll('.main-tab').forEach(t=>{
+    const txt=t.textContent||'';
+    if(esVendedor && txt.includes('Deudas')) t.style.display='none';
+  });
+  // Ocultar botones de exportar (incluirían precios) para vendedor
+  if(esVendedor) document.querySelectorAll('.exp-btn').forEach(b=>b.style.display='none');
+
   // Importar solo para admin/compras — lo agregamos al topbar
   if(canWrite){
     const tb = document.getElementById('main-tabs');
@@ -945,6 +955,8 @@ function applyRoleUI(){
   }
 }
 
+// ¿Puede ver precios/montos? Vendedor NO.
+function canSeePrices(){ return currentUser?.rol!=='vendedor'; }
 // ─── LOAD DATA ───
 async function loadAll(){
   await Promise.all([loadItems(), loadProyectos(), loadUsers()]);
@@ -1210,7 +1222,7 @@ function renderDep(dep){
     block.innerHTML=`
       <div class="po-header" onclick="togglePO('${uid}')">
         <span class="po-label">▾ ${po} ${ho} ${pb}</span>
-        <span class="po-meta">${badge}<span>${its.length} ítems</span><span>Total: USD ${fmtMoney(total)}</span>${sinDespachar>0.01?`<span style="color:#ba7517;font-weight:500">Sin despachar: USD ${fmtMoney(sinDespachar)}</span>`:`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`}<button class="btn-sm" onclick="event.stopPropagation();openDocs('${po}','${dep}')" title="Documentos del pedido">📎 Docs</button></span>
+        <span class="po-meta">${badge}<span>${its.length} ítems</span>${canSeePrices()?`<span>Total: USD ${fmtMoney(total)}</span>${sinDespachar>0.01?`<span style="color:#ba7517;font-weight:500">Sin despachar: USD ${fmtMoney(sinDespachar)}</span>`:`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`}`:`${sinDespachar>0.01?`<span style="color:#ba7517;font-weight:500">${its.filter(i=>i.estado!=='Despachado'&&i.estado!=='Recibido ARG').length} sin despachar</span>`:`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`}`}<button class="btn-sm" onclick="event.stopPropagation();openDocs('${po}','${dep}')" title="Documentos del pedido">📎 Docs</button></span>
       </div>
       <div class="po-body" id="${uid}">
         <table style="font-size:11px;table-layout:fixed;width:100%;min-width:1100px;"><thead><tr>
@@ -1220,9 +1232,7 @@ function renderDep(dep){
           <th style="width:8%">SAP Code</th>
           <th style="width:18%">Material</th>
           <th style="width:4%">QTY</th>
-          <th style="width:7%">P/Unit</th>
-          <th style="width:7%">Amount</th>
-          <th style="width:4%">Curr.</th>
+          ${canSeePrices()?`<th style="width:7%">P/Unit</th><th style="width:7%">Amount</th><th style="width:4%">Curr.</th>`:''}
           <th style="width:7%">Est. Finish</th>
           <th style="width:7%">Estado</th>
           <th style="width:7%">Ship. Method</th>
@@ -1238,9 +1248,7 @@ function renderDep(dep){
           <td>${p.sap_code||'—'}</td>
           <td title="${p.material||''}">${(p.material||'').length>22?(p.material||'').slice(0,22)+'…':p.material||'—'}</td>
           <td>${p.qty||0}</td>
-          <td>$${fmtMoney(p.price)}</td>
-          <td>$${fmtMoney(p.amount||(p.qty||0)*(p.price||0))}</td>
-          <td>${p.currency||'USD'}</td>
+          ${canSeePrices()?`<td>$${fmtMoney(p.price)}</td><td>$${fmtMoney(p.amount||(p.qty||0)*(p.price||0))}</td><td>${p.currency||'USD'}</td>`:''}
           <td>${p.fecha_estimada||'—'}</td>
           <td>${stockPill(p.estado_stock)}</td>
           <td>${p.shipment_method_proveedor||'—'}</td>
@@ -1463,12 +1471,11 @@ function renderProyectoTab(){
         <td style="font-size:11px">${p.sap_code||'—'}</td>
         <td style="font-size:11px" title="${p.material||''}">${(p.material||'').length>30?(p.material||'').slice(0,30)+'…':p.material||'—'}</td>
         <td style="text-align:center">${p.qty||0}</td>
-        <td style="font-size:11px">$${fmtMoney(p.price)}</td>
-        <td style="font-size:11px">$${fmtMoney(p.amount||(p.qty||0)*(p.price||0))}</td>
+        ${canSeePrices()?`<td style="font-size:11px">$${fmtMoney(p.price)}</td><td style="font-size:11px">$${fmtMoney(p.amount||(p.qty||0)*(p.price||0))}</td>`:''}
         <td><span class="${p.deposito==='China'?'o-china':'o-uy'}" style="font-size:10px">${p.deposito}</span></td>
         <td>${despachoPill(p.estado)}</td>
         <td><div style="display:flex;gap:3px;flex-wrap:wrap">${accionBtn(p)}${canWrite()?`<button class="btn-sm" onclick="openEditItem('${p.id}')" title="Editar">✏️</button>`:''}</div></td>
-      </tr>`).join('') : '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:1rem">Sin ítems asignados todavía</td></tr>';
+      </tr>`).join('') : `<tr><td colspan="${canSeePrices()?10:8}" style="text-align:center;color:#aaa;padding:1rem">Sin ítems asignados todavía</td></tr>`;
 
     return `<div class="po-block" style="margin-bottom:14px;">
       <div class="po-header" style="background:#f4f3fb;border-left:3px solid #534ab7;">
@@ -1477,10 +1484,10 @@ function renderProyectoTab(){
         </span>
         <span class="po-meta">
           <span>${its.length} ítems</span>
-          <span>Total: USD ${fmtMoney(total)}</span>
-          ${sinDespMonto>0.01?`<span style="color:#ba7517;font-weight:500">Sin despachar: USD ${fmtMoney(sinDespMonto)}</span>`:its.length?`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`:''}
+          ${canSeePrices()?`<span>Total: USD ${fmtMoney(total)}</span>
+          ${sinDespMonto>0.01?`<span style="color:#ba7517;font-weight:500">Sin despachar: USD ${fmtMoney(sinDespMonto)}</span>`:its.length?`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`:''}`:`${pend>0?`<span style="color:#ba7517;font-weight:500">${pend} sin despachar</span>`:its.length?`<span style="color:#3b6d11;font-weight:500">✓ Todo despachado</span>`:''}`}
           ${canWrite()?`<button class="btn-sm" onclick="event.stopPropagation();editarProyecto('${proy.id}')" title="Editar nombre">✏️ Editar</button>`:''}
-          ${canWrite()?`<button class="btn-sm" onclick="event.stopPropagation();exportProyectoNombre('${proy.nombre.replace(/'/g,"\\'")}')" title="Exportar">📥</button>`:''}
+          ${canSeePrices()?`<button class="btn-sm" onclick="event.stopPropagation();exportProyectoNombre('${proy.nombre.replace(/'/g,"\\'")}')" title="Exportar">📥</button>`:''}
           ${canWrite()?`<button class="btn-sm danger" onclick="event.stopPropagation();eliminarProyecto('${proy.id}','${proy.nombre.replace(/'/g,"\\'")}')" title="Eliminar proyecto">🗑</button>`:''}
         </span>
       </div>
@@ -1493,8 +1500,7 @@ function renderProyectoTab(){
         <table style="font-size:11px;table-layout:fixed;width:100%;min-width:900px;">
           <thead><tr>
             <th style="width:10%">PO#</th><th style="width:5%">Item</th><th style="width:9%">SAP</th>
-            <th style="width:24%">Material</th><th style="width:5%">QTY</th><th style="width:8%">P/Unit</th>
-            <th style="width:9%">Amount</th><th style="width:7%">Origen</th><th style="width:9%">Despacho</th><th style="width:11%">Acción</th>
+            <th style="width:24%">Material</th><th style="width:5%">QTY</th>${canSeePrices()?`<th style="width:8%">P/Unit</th><th style="width:9%">Amount</th>`:''}<th style="width:7%">Origen</th><th style="width:9%">Despacho</th><th style="width:11%">Acción</th>
           </tr></thead>
           <tbody>${filas}</tbody>
         </table>
@@ -3103,7 +3109,10 @@ function goTab(id,el){
   if(id==='buscar')document.getElementById('gq')?.focus();
   if(id==='admin')loadUsers();
   if(id==='proyectos')renderProyectoTab();
-  if(id==='deudas'){loadDeudas().then(()=>{switchDeudaTab(deudaTabActual);});}
+  if(id==='deudas'){
+    if(currentUser?.rol==='vendedor'){goTab('dash',document.querySelector('.main-tab'));return;}
+    loadDeudas().then(()=>{switchDeudaTab(deudaTabActual);});
+  }
 }
 
 // ─── MODAL ───
