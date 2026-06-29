@@ -399,8 +399,8 @@ tbody tr:hover{background:#fafaf8;}
         <div class="toolbar-left">
           <input class="search" id="deuda-s" placeholder="Buscar CI, PO..." oninput="renderDeudas()">
           <select class="fsel" id="deuda-fstatus" onchange="renderDeudas()">
+            <option value="pendiente" selected>Con saldo pendiente</option>
             <option value="">Todos</option>
-            <option value="pendiente">Con saldo pendiente</option>
             <option value="pagado">Saldados</option>
             <option value="vencido">Vencidos</option>
           </select>
